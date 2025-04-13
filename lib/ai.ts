@@ -1,3 +1,4 @@
+import DEFAULT_SYSTEM_ROLE from "./DEFAULT_SYSTEM_ROLE";
 import { CONFIG } from "../utils/config";
 import { z } from 'zod';
 import { tool, streamText, LanguageModel } from 'ai';
@@ -7,8 +8,6 @@ import { createOpenAI } from "@ai-sdk/openai";
 export interface ToolExecutors {
   clear?: () => Promise<boolean>;
 }
-
-const DEFAULT_SYSTEM_ROLE = '';
 
 const createModel = () => {
   let model: LanguageModel | undefined;
