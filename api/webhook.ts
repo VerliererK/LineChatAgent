@@ -1,4 +1,5 @@
 import { CONFIG } from "../utils/config";
+import { getMessages, setMessages } from "../lib/firestore";
 import { relayReply as replyText } from "../lib/line";
 import { createChat } from "../lib/ai";
 
@@ -35,6 +36,7 @@ const validateSignature = async (
 const handleLineMessage = async (event: any) => {
   const { replyToken, type: eventType } = event;
   const { type, text } = event.message;
+  const userId = event.source.userId;
 
   if (eventType !== "message") return;
 
@@ -44,8 +46,14 @@ const handleLineMessage = async (event: any) => {
   }
 
   try {
-    const { message } = await createChat([{ role: "user", content: text }]);
+    const messages = await getMessages(userId) as { role: "system" | "user" | "assistant"; content: string }[];
+    messages.push({ role: "user", content: text });
+  
+    const { message } = await createChat(messages);
     await replyText(message, replyToken);
+
+    messages.push({ role: "assistant", content: message });
+    await setMessages(userId, messages);
   } catch (error) {
     console.error(error);
     await replyText(`[Error]: ${error.message}`, replyToken);
