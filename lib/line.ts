@@ -1,0 +1,28 @@
+import { CONFIG } from "../utils/config";
+import fetchTimeout from "../utils/fetchTimeout";
+
+export const reply = (messages: { type: string; text: string }[], replyToken: string) => {
+  return fetchTimeout("https://api.line.me/v2/bot/message/reply", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${CONFIG.LINE_CHANNEL_ACCESS_TOKEN}`,
+    },
+    body: JSON.stringify({
+      replyToken: replyToken,
+      messages: messages,
+    }),
+  }, 3000);
+};
+
+export const replyText = (text: string, replyToken: string) => {
+  return reply([{ type: "text", text: text }], replyToken);
+};
+
+export const relayReply = (text: string, replyToken: string) => {
+  return fetch(`${CONFIG.API_HOST}/api/reply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ replyToken, text }),
+  })
+};
