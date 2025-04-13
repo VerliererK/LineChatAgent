@@ -1,5 +1,5 @@
 import { CONFIG } from "../utils/config";
-import { getMessages, setMessages } from "../lib/firestore";
+import { getMessages, setMessages, clearMessages } from "../lib/firestore";
 import { relayReply as replyText } from "../lib/line";
 import { createChat } from "../lib/ai";
 
@@ -48,12 +48,20 @@ const handleLineMessage = async (event: any) => {
   try {
     const messages = await getMessages(userId) as { role: "system" | "user" | "assistant"; content: string }[];
     messages.push({ role: "user", content: text });
-  
-    const { message } = await createChat(messages);
+
+    let skipSetMessages = false;
+    const { message } = await createChat(messages, {
+      clear: () => clearMessages(userId).then(() => {
+        skipSetMessages = true;
+        return true;
+      }).catch(() => false),
+    });
     await replyText(message, replyToken);
 
-    messages.push({ role: "assistant", content: message });
-    await setMessages(userId, messages);
+    if (!skipSetMessages) {
+      messages.push({ role: "assistant", content: message });
+      await setMessages(userId, messages);
+    }
   } catch (error) {
     console.error(error);
     await replyText(`[Error]: ${error.message}`, replyToken);

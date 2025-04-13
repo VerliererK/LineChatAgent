@@ -1,7 +1,12 @@
 import { CONFIG } from "../utils/config";
-import { streamText, LanguageModel } from 'ai';
+import { z } from 'zod';
+import { tool, streamText, LanguageModel } from 'ai';
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createOpenAI } from "@ai-sdk/openai";
+
+export interface ToolExecutors {
+  clear?: () => Promise<boolean>;
+}
 
 const DEFAULT_SYSTEM_ROLE = '';
 
@@ -33,11 +38,37 @@ const createModel = () => {
   return model;
 }
 
-export const createChat = async (messages: { role: 'user' | 'assistant' | 'system'; content: string }[]) => {
+const createTools = (executor: ToolExecutors = {}) => {
+  const tools: Record<string, any> = {
+    get_date: tool({
+      description: '取得最新日期時間 (Get the current datetime)',
+      parameters: z.object({}),
+      execute: async () => {
+        return new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hourCycle: "h24" });
+      },
+    }),
+    clear: tool({
+      description: '清除與 AI 的聊天紀錄 (Clear the chat history with the AI)',
+      parameters: z.object({}),
+      execute: async () => {
+        if (executor.clear) {
+          const success = await executor.clear();
+          return success ? "Successfully cleared chat history" : "Failed to clear chat history";
+        }
+        return "Clear function not configured";
+      },
+    }),
+  };
+  return tools;
+}
+
+export const createChat = async (messages: { role: 'user' | 'assistant' | 'system'; content: string }[], executor: ToolExecutors = {}) => {
   const model = createModel();
   if (!model) {
     throw new Error("No model found");
   }
+
+  const tools = createTools(executor);
 
   const startTime = Date.now();
 
@@ -47,6 +78,8 @@ export const createChat = async (messages: { role: 'user' | 'assistant' | 'syste
     temperature: CONFIG.LLM_TEMPERATURE,
     system: CONFIG.LLM_SYSTEM_ROLE || DEFAULT_SYSTEM_ROLE,
     messages,
+    tools: tools,
+    maxSteps: 5,
     onError: ({ error }) => {
       console.error(error);
       throw error;
@@ -63,11 +96,14 @@ export const createChat = async (messages: { role: 'user' | 'assistant' | 'syste
     message += textPart;
   }
 
+  const steps = await result.steps;
+  const toolResults = steps.flatMap(step => step.toolResults);
+  const toolUsage = toolResults.map(r => r.toolName).join(',');
   const finishReason = await result.finishReason;
   const usage = await result.usage;
   const totalTokens = usage?.totalTokens;
   const elapsed = Date.now() - startTime;
-  console.log(`[Info]: token: ${totalTokens}, finish_reason: ${finishReason}, elapsed: ${elapsed}ms`);
+  console.log(`[Info]: token: ${totalTokens}, finish_reason: ${finishReason}, tool_usage: ${toolUsage}, elapsed: ${elapsed}ms`);
 
   return { message, finishReason };
 }
