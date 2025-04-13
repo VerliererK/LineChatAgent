@@ -176,6 +176,29 @@ const createTools = (executor: ToolExecutors = {}) => {
         return result;
       },
     });
+    tools.tavily_extract = tool({
+      description: '使用 Tavily API 從一個或多個指定的 URL 中提取網頁內容',
+      parameters: z.object({
+        urls: z.string().describe('要提取內容的網頁 URL，可以是多個 URL，以逗號分隔'),
+      }),
+      execute: async ({ urls }) => {
+        const result = await fetch("https://api.tavily.com/extract", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${CONFIG.TAVILY_API_KEY}`,
+          },
+          body: JSON.stringify({ urls: urls.split(',').map(url => url.trim()) }),
+        })
+          .then(res => res.json())
+          .then(data => data.results)
+          .catch(err => {
+            console.error('[Error] tavily: ', err);
+            return `Error: ${err.message}`;
+          });
+        return result;
+      },
+    });
   }
   return tools;
 }
