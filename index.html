@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 助理</title>
+  <style>
+    /* --- 全局與基本樣式 --- */
+    :root {
+      --line-green: #06C755;
+      /* LINE 主要綠色 */
+      --line-bubble-green: #8DE041;
+      /* 使用者氣泡綠色 (近似) */
+      --background-color: #F5F5F5;
+      /* 聊天背景色 (近似) */
+      --text-color: #333;
+      --white: #FFFFFF;
+      --light-gray: #F0F0F0;
+      --border-color: #D1D1D1;
+      --error-color: #FF4D4F;
+      --typing-dot-color: #B0B0B0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      /* font-family: 'Helvetica Neue', Helvetica, Arial, '蘋方-繁', 'Microsoft JhengHei', sans-serif; */
+      background-color: var(--background-color);
+      color: var(--text-color);
+      font-size: 18px;
+      /* 基本字體大小 */
+      line-height: 1.5;
+    }
+
+    /* --- 主要容器 --- */
+    #chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      /* 佔滿視窗高度 */
+      max-width: 700px;
+      /* 最大寬度，模擬手機寬度 */
+      margin: 0 auto;
+      /* 置中 */
+      background-color: var(--background-color);
+      border-left: 1px solid var(--border-color);
+      border-right: 1px solid var(--border-color);
+      overflow: hidden;
+      /* 避免內部元素溢出 */
+    }
+
+    /* --- 標題列 --- */
+    #header {
+      background-color: var(--line-green);
+      color: var(--white);
+      padding: 10px 15px;
+      font-weight: bold;
+      text-align: center;
+      flex-shrink: 0;
+      /* 防止標題列被壓縮 */
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    /* --- 訊息區域 --- */
+    #message-area {
+      flex-grow: 1;
+      /* 佔據剩餘空間 */
+      overflow-y: auto;
+      /* 內容過多時顯示滾動條 */
+      padding: 15px 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* --- 訊息氣泡 --- */
+    .message {
+      max-width: 75%;
+      /* 訊息最大寬度 */
+      padding: 10px 15px;
+      border-radius: 15px;
+      /* 圓角 */
+      margin-bottom: 12px;
+      position: relative;
+      /* 為了小尾巴定位 */
+      word-wrap: break-word;
+      /* 長單字換行 (雖然 pre-wrap 會處理，保留也無妨) */
+      white-space: pre-wrap;
+      /* ! 重要：保留換行和空白，並自動換行 */
+      line-height: 1.4;
+    }
+
+    /* 使用者訊息 */
+    .message.user {
+      background-color: var(--line-bubble-green);
+      color: var(--text-color);
+      align-self: flex-end;
+      /* 靠右 */
+      margin-left: auto;
+    }
+
+    /* 助理訊息 */
+    .message.assistant {
+      background-color: var(--white);
+      color: var(--text-color);
+      align-self: flex-start;
+      /* 靠左 */
+      margin-right: auto;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      /* 輕微陰影 */
+    }
+
+    /* 錯誤訊息特殊樣式 */
+    .message.error {
+      background-color: var(--light-gray);
+      color: var(--error-color);
+      font-style: italic;
+    }
+
+    /* 正在輸入提示 */
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      padding: 7px 15px;
+      /* 與一般訊息相同 */
+    }
+
+    .typing-indicator span {
+      height: 8px;
+      width: 8px;
+      background-color: var(--typing-dot-color);
+      border-radius: 50%;
+      display: inline-block;
+      margin: 0 2px;
+      animation: bounce 1.3s infinite ease-in-out;
+    }
+
+    .typing-indicator span:nth-child(1) {
+      animation-delay: -0.32s;
+    }
+
+    .typing-indicator span:nth-child(2) {
+      animation-delay: -0.16s;
+    }
+
+    .typing-indicator span:nth-child(3) {
+      animation-delay: 0s;
+    }
+
+    @keyframes bounce {
+
+      0%,
+      80%,
+      100% {
+        transform: scale(0);
+      }
+
+      40% {
+        transform: scale(1.0);
+      }
+    }
+
+    /* --- 輸入區域 --- */
+    #input-area {
+      display: flex;
+      align-items: flex-end;
+      /* 底部對齊，以便按鈕和textarea高度變化時保持底部 */
+      padding: 10px;
+      background-color: var(--white);
+      border-top: 1px solid var(--border-color);
+      flex-shrink: 0;
+      /* 防止輸入區域被壓縮 */
+    }
+
+    #user-input {
+      flex-grow: 1;
+      /* 佔據大部分寬度 */
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      /* 圓角 */
+      padding: 8px 15px;
+      font-size: 1em;
+      line-height: 1.4;
+      resize: none;
+      /* 禁止手動調整大小 */
+      overflow-y: hidden;
+      /* 初始隱藏滾動條，由JS控制 */
+      min-height: calc(1em * 1.4 + 16px + 2px);
+      /* 至少一行的高度 (字高 + 上下padding + 上下border) */
+      max-height: calc((1em * 1.4) * 5 + 16px + 2px);
+      /* 最多5行的高度 */
+      margin-right: 10px;
+      outline: none;
+      /* 去除焦點外框 */
+    }
+
+    #send-button {
+      background-color: var(--line-green);
+      color: var(--white);
+      border: none;
+      border-radius: 50%;
+      /* 圓形按鈕 */
+      width: 38px;
+      height: 38px;
+      font-size: 1.2em;
+      cursor: pointer;
+      flex-shrink: 0;
+      /* 防止按鈕被壓縮 */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background-color 0.2s ease;
+    }
+
+    #send-button:hover {
+      background-color: #05a54a;
+      /* 懸停時稍暗 */
+    }
+
+    #send-button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    /* SVG 箭頭圖示 (傳送按鈕內部) */
+    #send-button svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* --- 響應式調整 --- */
+    @media (max-width: 480px) {
+      body {
+        font-size: 15px;
+      }
+
+      #header {
+        padding: 8px 12px;
+      }
+
+      #message-area {
+        padding: 10px 8px;
+      }
+
+      .message {
+        padding: 8px 12px;
+        margin-bottom: 10px;
+        max-width: 80%;
+      }
+
+      #input-area {
+        padding: 8px;
+      }
+
+      #user-input {
+        padding: 7px 12px;
+      }
+
+      #send-button {
+        width: 36px;
+        height: 36px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="chat-container">
+    <div id="header">LINE Agent</div>
+
+    <div id="message-area">
+    </div>
+
+    <div id="input-area">
+      <textarea id="user-input" placeholder="輸入訊息..." rows="1"></textarea>
+      <button id="send-button" aria-label="傳送訊息">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const messageArea = document.getElementById('message-area');
+    const userInput = document.getElementById('user-input');
+    const sendButton = document.getElementById('send-button');
+    const inputArea = document.getElementById('input-area'); // 用於調整textarea高度
+
+    // 對話歷史紀錄
+    let messages = [];
+    let isWaitingForResponse = false; // 標記是否正在等待 API 回應
+
+    // --- DOMContentLoaded 事件監聽器 ---
+    document.addEventListener('DOMContentLoaded', () => {
+      // 初始歡迎訊息
+      addMessageToHistory('assistant', '你好！請問有什麼可以協助您的嗎？');
+      displayMessage('assistant', '你好！請問有什麼可以協助您的嗎？');
+
+      // 監聽傳送按鈕點擊
+      sendButton.addEventListener('click', handleSendMessage);
+
+      // 監聽輸入框的按鍵事件 (Enter 傳送, Shift+Enter 換行)
+      userInput.addEventListener('keydown', handleKeyDown);
+
+      // 監聽輸入框內容變化，自動調整高度
+      userInput.addEventListener('input', adjustTextareaHeight);
+
+      // 頁面載入時也調整一次，以防有預設內容
+      adjustTextareaHeight();
+    });
+
+    // --- 函數：處理訊息傳送 ---
+    function handleSendMessage() {
+      const text = userInput.value.trim();
+      if (text && !isWaitingForResponse) {
+        // 1. 加入並顯示使用者訊息
+        addMessageToHistory('user', text);
+        displayMessage('user', text);
+
+        // 2. 清空輸入框並重置高度
+        userInput.value = '';
+        adjustTextareaHeight();
+
+        // 3. 顯示"正在輸入"提示
+        showTypingIndicator();
+
+        // 4. 呼叫 API
+        callChatAPI();
+      }
+    }
+
+    // --- 函數：處理鍵盤按下事件 ---
+    function handleKeyDown(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault(); // 防止預設的換行行為
+        handleSendMessage();
+      }
+      // Shift + Enter 會維持預設的換行行為
+    }
+
+    // --- 函數：調整 Textarea 高度 ---
+    function adjustTextareaHeight() {
+      userInput.style.height = 'auto'; // 先重置高度，讓 scrollHeight 能正確計算
+      let scrollHeight = userInput.scrollHeight;
+      const maxHeight = parseFloat(getComputedStyle(userInput).maxHeight);
+
+      // 考慮 border 的寬度 (通常是 1px * 2)
+      const borderTopWidth = parseFloat(getComputedStyle(userInput).borderTopWidth) || 0;
+      const borderBottomWidth = parseFloat(getComputedStyle(userInput).borderBottomWidth) || 0;
+      const borderHeight = borderTopWidth + borderBottomWidth;
+
+      // 確保高度不超過 max-height
+      if (scrollHeight > maxHeight) {
+        userInput.style.height = maxHeight + 'px';
+        userInput.style.overflowY = 'auto'; // 超過最大高度時顯示滾動條
+      } else {
+        userInput.style.height = (scrollHeight + borderHeight) + 'px';
+        userInput.style.overflowY = 'hidden'; // 未超過時隱藏滾動條
+      }
+    }
+
+    // --- 函數：將訊息加入歷史紀錄 ---
+    function addMessageToHistory(role, content) {
+      messages.push({ role, content });
+    }
+
+    // --- 函數：在介面上顯示訊息 ---
+    function displayMessage(role, content, isError = false) {
+      const messageElement = document.createElement('div');
+      messageElement.classList.add('message', role);
+      if (isError) {
+        messageElement.classList.add('error');
+      }
+      messageElement.textContent = content;
+      messageArea.appendChild(messageElement);
+      scrollToBottom(); // 確保新訊息可見
+    }
+
+    // --- 函數：顯示正在輸入提示 ---
+    function showTypingIndicator() {
+      if (document.getElementById('typing-indicator')) return; // 避免重複添加
+
+      const indicatorContainer = document.createElement('div');
+      indicatorContainer.id = 'typing-indicator';
+      indicatorContainer.classList.add('message', 'assistant'); // 讓它看起來像助理訊息的一部分
+
+      const dotsWrapper = document.createElement('div');
+      dotsWrapper.classList.add('typing-indicator');
+      dotsWrapper.innerHTML = '<span></span><span></span><span></span>';
+
+      indicatorContainer.appendChild(dotsWrapper);
+      messageArea.appendChild(indicatorContainer);
+      scrollToBottom();
+    }
+
+    // --- 函數：移除正在輸入提示 ---
+    function hideTypingIndicator() {
+      const indicator = document.getElementById('typing-indicator');
+      if (indicator) {
+        indicator.remove();
+      }
+    }
+
+    // --- 函數：自動捲動到底部 ---
+    function scrollToBottom() {
+      messageArea.scrollTop = messageArea.scrollHeight;
+    }
+
+    // --- 函數：呼叫後端 API ---
+    async function callChatAPI() {
+      isWaitingForResponse = true; // 開始等待
+      sendButton.disabled = true; // 禁用傳送按鈕
+
+      try {
+        const response = await fetch('/api/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ messages: messages }) // 發送完整對話歷史
+        });
+
+        hideTypingIndicator(); // 收到回應後先隱藏提示
+
+        if (!response.ok) {
+          // 處理 HTTP 錯誤 (非 2xx 狀態碼)
+          const errorText = await response.text(); // 嘗試讀取錯誤訊息文本
+          console.error('API Error:', response.status, errorText);
+          throw new Error(`伺服器錯誤 (狀態碼: ${response.status})。 ${errorText || '無法取得助理回應。'}`);
+        }
+
+        // API 回應是純文字
+        const assistantReply = await response.text();
+
+        // 加入並顯示助理回應
+        addMessageToHistory('assistant', assistantReply);
+        displayMessage('assistant', assistantReply);
+
+      } catch (error) {
+        console.error('Fetch Error:', error);
+        hideTypingIndicator(); // 錯誤時也要隱藏提示
+        // 顯示對使用者友善的錯誤訊息
+        displayMessage('assistant', `發生錯誤：${error.message || '無法連線或處理請求。'}`, true);
+      } finally {
+        isWaitingForResponse = false; // 結束等待
+        sendButton.disabled = false; // 恢復傳送按鈕
+        userInput.focus(); // 將焦點移回輸入框
+      }
+    }
+
+  </script>
+</body>
+
+</html>

@@ -1,5 +1,6 @@
 import { CONFIG } from "../utils/config";
 import { relayReply as replyText } from "../lib/line";
+import { createChat } from "../lib/ai";
 
 export const config = {
   runtime: "edge",
@@ -42,7 +43,13 @@ const handleLineMessage = async (event: any) => {
     return;
   }
 
-  await replyText(`You said: ${text}`, replyToken);
+  try {
+    const { message } = await createChat([{ role: "user", content: text }]);
+    await replyText(message, replyToken);
+  } catch (error) {
+    console.error(error);
+    await replyText(`[Error]: ${error.message}`, replyToken);
+  }
 };
 
 export default async (request: Request): Promise<Response> => {
