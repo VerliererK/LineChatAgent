@@ -15,4 +15,8 @@ export const CONFIG = {
   LLM_MAX_TOKENS: Number(process.env.LLM_MAX_TOKENS) || 200,
   LLM_TEMPERATURE: Number(process.env.LLM_TEMPERATURE) || undefined,
   LLM_TIMEOUT: Number(process.env.LLM_TIMEOUT) || 28000,
+
+  // optional
+  GOOGLE_MAP_API_KEY: process.env.GOOGLE_MAP_API_KEY,
+  TAVILY_API_KEY: process.env.TAVILY_API_KEY,
 };
