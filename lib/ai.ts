@@ -1,7 +1,7 @@
 import DEFAULT_SYSTEM_ROLE from "./DEFAULT_SYSTEM_ROLE";
 import { CONFIG } from "../utils/config";
 import { z } from 'zod';
-import { tool, streamText, LanguageModel } from 'ai';
+import { tool, streamText, LanguageModel, CoreMessage } from 'ai';
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createOpenAI } from "@ai-sdk/openai";
 
@@ -203,7 +203,7 @@ const createTools = (executor: ToolExecutors = {}) => {
   return tools;
 }
 
-export const createChat = async (messages: { role: 'user' | 'assistant' | 'system'; content: string }[], executor: ToolExecutors = {}) => {
+export const createChat = async (messages: CoreMessage[], executor: ToolExecutors = {}) => {
   const model = createModel();
   if (!model) {
     throw new Error("No model found");

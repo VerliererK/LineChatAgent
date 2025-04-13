@@ -1,7 +1,8 @@
 import { CONFIG } from "../utils/config";
 import { getMessages, setMessages, clearMessages } from "../lib/firestore";
-import { relayReply as replyText } from "../lib/line";
+import { getContent, relayReply as replyText } from "../lib/line";
 import { createChat } from "../lib/ai";
+import { CoreMessage } from 'ai';
 
 export const config = {
   runtime: "edge",
@@ -33,6 +34,16 @@ const validateSignature = async (
   return xLineSignature === signature;
 };
 
+const getData = async (message: any) => {
+  const { id, contentProvider } = message;
+  const { type } = contentProvider;
+
+  const res = type === 'external' ? await fetch(contentProvider.originalContentUrl) : await getContent(id);
+  if (!res.ok) throw new Error(`Failed to get image content: ${res.statusText} (${res.status})`);
+  const buffer = await res.arrayBuffer();
+  return buffer;
+}
+
 const handleLineMessage = async (event: any) => {
   const { replyToken, type: eventType } = event;
   const { type, text } = event.message;
@@ -40,14 +51,23 @@ const handleLineMessage = async (event: any) => {
 
   if (eventType !== "message") return;
 
-  if (type !== "text") {
+  // type: text, image, video, audio, file, location, sticker,
+  if (type !== "text" && type !== "image") {
     await replyText("Not support this message type", replyToken);
     return;
   }
 
   try {
-    const messages = await getMessages(userId) as { role: "system" | "user" | "assistant"; content: string }[];
-    messages.push({ role: "user", content: text });
+    const userMessages = await getMessages(userId);
+    const messages = [...userMessages] as CoreMessage[];
+
+    if (type === "image") {
+      const buffer = await getData(event.message);
+      if (!buffer) throw new Error("Failed to get image content");
+      messages.push({ role: "user", content: [{ type: 'image', image: buffer }] });
+    } else {
+      messages.push({ role: "user", content: text });
+    }
 
     let skipSetMessages = false;
     const { message } = await createChat(messages, {
@@ -59,8 +79,14 @@ const handleLineMessage = async (event: any) => {
     await replyText(message, replyToken);
 
     if (!skipSetMessages) {
-      messages.push({ role: "assistant", content: message });
-      await setMessages(userId, messages);
+      if (type === "image") {
+        // 將圖片訊息替換成文字訊息，不儲存圖片內容，直接存放在 FireStore 會超過限制
+        userMessages.push({ role: "user", content: "[User sent an image]" });
+      } else {
+        userMessages.push({ role: "user", content: text });
+      }
+      userMessages.push({ role: "assistant", content: message });
+      await setMessages(userId, userMessages);
     }
   } catch (error) {
     console.error(error);

@@ -5,7 +5,7 @@
 
 ## 主要特色
 
-- **Line Webhook**：透過 Line Webhook 接收用戶訊息並使用 AI 進行回應
+- **Line Webhook**：透過 Line Webhook 接收用戶訊息並使用 AI 進行回應，目前支援文字與圖片訊息 (圖片不儲存在 Firestore)
 - **Vercel Edge Functions**：免費版有 30 秒的執行時間限制，能盡量產生更多的回應內容
 - **Vercel AI SDK**：支援 OpenAI (GPT-4o) 或 Google Gemini (gemini-2.0-flash)
 - **Tool calling**：
