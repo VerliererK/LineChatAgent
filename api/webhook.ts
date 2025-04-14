@@ -89,8 +89,10 @@ const handleLineMessage = async (event: any) => {
       await setMessages(userId, userMessages);
     }
   } catch (error) {
+    const status = error.code || error.status || 500;
+    const message = error.message || "Internal Server Error";
     console.error(error);
-    await replyText(`[Error]: ${error.message}`, replyToken);
+    await replyText(`[Error]: ${message} (${status})`, replyToken);
   }
 };
 

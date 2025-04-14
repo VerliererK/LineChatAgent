@@ -1,5 +1,4 @@
 import { createChat } from "../lib/ai";
-import { AISDKError } from 'ai';
 
 export const config = {
   runtime: "edge",
@@ -14,10 +13,8 @@ export default async (req: Request): Promise<Response> => {
     const { message } = await createChat(messages);
     return new Response(message);
   } catch (error) {
-    if (error instanceof AISDKError) {
-      return new Response(error.message, { status: 500 });
-    }
-    console.error(error);
-    return new Response("Internal Server Error", { status: 500 });
+    const status = error.code || error.status || 500;
+    const message = error.message || "Internal Server Error";
+    return new Response(message, { status });
   }
 };

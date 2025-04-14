@@ -124,7 +124,7 @@ const createTools = (executor: ToolExecutors = {}) => {
         radius: z.number().optional().default(1000).describe("搜尋半徑（公尺），最大 50,000 公尺，預設為 1000 公尺。"),
       }),
       execute: async ({ query, latitude, longitude, radius }) => {
-        console.log(`[google_map]: ${query}, ${latitude}, ${longitude}, ${radius}`);
+        console.log(`[Info] google_map: ${query}, ${latitude}, ${longitude}, ${radius}`);
         const result = await fetch('https://places.googleapis.com/v1/places:searchText', {
           headers: {
             'Content-Type': 'application/json',
@@ -222,7 +222,7 @@ export const createChat = async (messages: CoreMessage[], executor: ToolExecutor
     tools: tools,
     maxSteps: 5,
     onError: ({ error }) => {
-      console.error(error);
+      console.error('[Error] streamText:', error);
       throw error;
     },
   });
@@ -254,7 +254,7 @@ export const createChat = async (messages: CoreMessage[], executor: ToolExecutor
   const usage = await result.usage;
   const totalTokens = usage?.totalTokens;
   const elapsed = Date.now() - startTime;
-  console.log(`[Info]: token: ${totalTokens}, finish_reason: ${finishReason}, tool_usage: ${toolUsage}, elapsed: ${elapsed}ms`);
+  console.log(`[Info] token: ${totalTokens}, finish_reason: ${finishReason}, tool_usage: ${toolUsage}, elapsed: ${elapsed}ms`);
 
   return { message, finishReason };
 }
