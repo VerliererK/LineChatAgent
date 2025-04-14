@@ -1,10 +1,6 @@
 import { createChat } from "../lib/ai";
 
-export const config = {
-  runtime: "edge",
-};
-
-export default async (req: Request): Promise<Response> => {
+export async function POST(req: Request): Promise<Response> {
   const { messages } = (await req.json()) as { messages: { role: 'user' | 'assistant' | 'system'; content: string }[] };
   if (!Array.isArray(messages)) {
     return new Response("No messages provided", { status: 400 });

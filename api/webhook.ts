@@ -1,13 +1,8 @@
 import { CONFIG } from "../utils/config";
 import { getMessages, setMessages, clearMessages } from "../lib/firestore";
-import { getContent, relayReply as replyText } from "../lib/line";
+import { getContent, replyText } from "../lib/line";
 import { createChat } from "../lib/ai";
 import { CoreMessage } from 'ai';
-
-export const config = {
-  runtime: "edge",
-  regions: ["hnd1"],
-};
 
 const validateSignature = async (
   xLineSignature: string | null,
@@ -96,13 +91,8 @@ const handleLineMessage = async (event: any) => {
   }
 };
 
-export default async (request: Request): Promise<Response> => {
+export async function POST(request: Request): Promise<Response> {
   try {
-    // 確認請求方法
-    if (request.method !== 'POST') {
-      return new Response('Method Not Allowed', { status: 405 });
-    }
-
     // 驗證 LINE Webhook 簽名
     const body = await request.text();
     const signature = request.headers.get('x-line-signature');
