@@ -1,12 +1,12 @@
 # Line Chat Agent (Vercel + Firebase)
 
-本專案是一個部署於 Vercel Edge Functions 的 Line 聊天機器人，支援多種大型語言模型（Google Gemini、OpenAI 或相容的 API 服務如 OpenRouter）。機器人具備多種智慧工具功能，使用 Firebase Firestore 進行對話記錄儲存，並支援 Tool calling 功能，讓 AI 能夠調用外部工具執行特定任務。
+本專案是一個部署於 Vercel Functions 的 Line 聊天機器人，支援多種大型語言模型（Google Gemini、OpenAI 或相容的 API 服務如 OpenRouter）。機器人具備多種智慧工具功能，使用 Firebase Firestore 進行對話記錄儲存，並支援 Tool calling 功能，讓 AI 能夠調用外部工具執行特定任務。
 
 
 ## 主要特色
 
 - **Line Webhook**：透過 Line Webhook 接收用戶訊息並使用 AI 進行回應，目前支援文字與圖片訊息 (圖片不儲存在 Firestore)
-- **Vercel Edge Functions**：免費版有 30 秒的執行時間限制，能盡量產生更多的回應內容
+- **Vercel Functions**：啟用 Fluid compute 能有 60 秒的運行時間，能產生更多的回應內容 ( Line 不支援 Streaming 回應，所以要等待全部內容產生完畢才能回應 )
 - **Vercel AI SDK**：支援 OpenAI (GPT-4o) 或 Google Gemini (gemini-2.0-flash)
 - **Tool calling**：
   - 日期時間查詢
