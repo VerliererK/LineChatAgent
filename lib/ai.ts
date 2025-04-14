@@ -237,6 +237,16 @@ export const createChat = async (messages: CoreMessage[], executor: ToolExecutor
     message += textPart;
   }
 
+  if (signal.aborted) {
+    const elapsed = Date.now() - startTime;
+    console.log(`[Info] token: , finish_reason: timeout, tool_usage: , elapsed: ${elapsed}ms`);
+    if (message)
+      message += "...";
+    else
+      message = "抱歉，處理您的請求時間過長，請稍後再試一次。";
+    return { message, finishReason: 'timeout' };
+  }
+
   const steps = await result.steps;
   const toolResults = steps.flatMap(step => step.toolResults);
   const toolUsage = toolResults.map(r => r.toolName).join(',');
