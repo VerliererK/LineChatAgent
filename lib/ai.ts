@@ -110,7 +110,7 @@ const createTools = (executor: ToolExecutors = {}) => {
       },
     });
     tools.google_map = tool({
-      description: `使用 Google Maps Places API 搜尋地點資訊。可根據指定的經緯度與半徑，查詢附近的商家、餐廳、景點等，並回傳地點名稱、地址、評分、價格等級等資料。
+      description: `使用 Google Maps Places API 搜尋地點資訊。可根據指定的經緯度與半徑，查詢附近的商家、餐廳、景點等，並回傳地點名稱、Google Map連結、評分、價格等級等資料。
 適用情境：
 - 想知道某地附近有什麼推薦的餐廳、咖啡廳、景點等
 - 查詢特定地點的詳細資訊（如名稱、地址、評分）
@@ -122,20 +122,22 @@ const createTools = (executor: ToolExecutors = {}) => {
         latitude: z.number().describe("搜尋中心點的緯度，例如台北車站為 25.0478。"),
         longitude: z.number().describe("搜尋中心點的經度，例如台北車站為 121.5170。"),
         radius: z.number().optional().default(1000).describe("搜尋半徑（公尺），最大 50,000 公尺，預設為 1000 公尺。"),
+        language: z.string().optional().default('zh-TW').describe("搜尋結果的語言，預設為 'zh-TW'。"),
       }),
-      execute: async ({ query, latitude, longitude, radius }) => {
-        console.log(`[Info] google_map: ${query}, ${latitude}, ${longitude}, ${radius}`);
+      execute: async ({ query, latitude, longitude, radius, language }) => {
+        console.log(`[Info] google_map: ${query}, ${latitude}, ${longitude}, ${radius}, ${language}`);
         const result = await fetch('https://places.googleapis.com/v1/places:searchText', {
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': CONFIG.GOOGLE_MAP_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.rating,places.priceLevel',
+            'X-Goog-FieldMask': 'places.displayName,places.googleMapsUri,places.rating,places.priceLevel',
             // places.rating only 1000 free requests per month, others are 5000 free requests per month
           },
           method: 'POST',
           body: JSON.stringify({
             textQuery: query,
             locationBias: { circle: { center: { latitude, longitude }, radius } },
+            languageCode: language,
           }),
         })
           .then(res => res.json())
