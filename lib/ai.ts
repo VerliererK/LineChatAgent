@@ -39,13 +39,6 @@ const createModel = () => {
 
 const createTools = (executor: ToolExecutors = {}) => {
   const tools: Record<string, any> = {
-    get_date: tool({
-      description: '取得最新日期時間 (Get the current datetime)',
-      parameters: z.object({}),
-      execute: async () => {
-        return new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hourCycle: "h24" });
-      },
-    }),
     clear: tool({
       description: '清除與 AI 的聊天紀錄 (Clear the chat history with the AI)',
       parameters: z.object({}),
