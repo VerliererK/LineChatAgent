@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { tool, streamText, LanguageModel, CoreMessage } from 'ai';
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createOpenAI } from "@ai-sdk/openai";
+import { createXai } from "@ai-sdk/xai";
 
 export interface ToolExecutors {
   clear?: () => Promise<boolean>;
@@ -33,6 +34,12 @@ const createModel = () => {
       apiKey: CONFIG.LLM_API_KEY,
     });
     model = google(CONFIG.LLM_MODEL);
+  }
+  else if (CONFIG.LLM_PROVIDER === "xai") {
+    const xai = createXai({
+      apiKey: CONFIG.LLM_API_KEY,
+    });
+    model = xai(CONFIG.LLM_MODEL);
   }
   return model;
 }
