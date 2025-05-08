@@ -14,20 +14,20 @@ const createModel = () => {
   let model: LanguageModel | undefined;
 
   if (CONFIG.LLM_PROVIDER === "openai") {
-    if (CONFIG.LLM_BASE_URL) {
-      const openai = createOpenAI({
-        apiKey: CONFIG.LLM_API_KEY,
-        baseURL: CONFIG.LLM_BASE_URL,
-        compatibility: 'compatible',
-      })
-      model = openai(CONFIG.LLM_MODEL);
-    } else {
-      const openai = createOpenAI({
-        apiKey: CONFIG.LLM_API_KEY,
-        compatibility: 'strict',
-      })
-      model = openai(CONFIG.LLM_MODEL);
-    }
+    const openai = createOpenAI({
+      apiKey: CONFIG.LLM_API_KEY,
+      baseURL: CONFIG.LLM_BASE_URL || 'https://api.openai.com/v1',
+      compatibility: 'strict',
+    })
+    model = openai(CONFIG.LLM_MODEL);
+  }
+  else if (CONFIG.LLM_PROVIDER === "openai-compatible") {
+    const openai = createOpenAI({
+      apiKey: CONFIG.LLM_API_KEY,
+      baseURL: CONFIG.LLM_BASE_URL,
+      compatibility: 'compatible',
+    })
+    model = openai(CONFIG.LLM_MODEL);
   }
   else if (CONFIG.LLM_PROVIDER === "google") {
     const google = createGoogleGenerativeAI({
