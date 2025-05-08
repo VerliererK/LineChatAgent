@@ -258,5 +258,8 @@ export const createChat = async (messages: CoreMessage[], executor: ToolExecutor
   const elapsed = Date.now() - startTime;
   console.log(`[Info] token: ${totalTokens}, finish_reason: ${finishReason}, tool_usage: ${toolUsage}, elapsed: ${elapsed}ms`);
 
+  if (!message) {
+    message = `AI 發生錯誤，無法回答您的問題。 finish_reason: ${finishReason}`;
+  }
   return { message, finishReason };
 }
