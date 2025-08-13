@@ -13,6 +13,10 @@ export interface ToolExecutors {
 const createModel = () => {
   let model: LanguageModel | undefined;
 
+  if (process.env.AI_GATEWAY_API_KEY && CONFIG.LLM_MODEL.startsWith("vercel")) {
+    return CONFIG.LLM_MODEL.replace("vercel/", "");
+  }
+
   if (CONFIG.LLM_PROVIDER === "openai") {
     const openai = createOpenAI({
       apiKey: CONFIG.LLM_API_KEY,
