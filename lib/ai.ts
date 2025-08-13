@@ -1,7 +1,7 @@
 import DEFAULT_SYSTEM_ROLE from "./DEFAULT_SYSTEM_ROLE";
 import { CONFIG } from "../utils/config";
 import { z } from 'zod';
-import { tool, streamText, LanguageModel, CoreMessage } from 'ai';
+import { tool, stepCountIs, streamText, LanguageModel, ModelMessage } from 'ai';
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createOpenAI } from "@ai-sdk/openai";
 import { createXai } from "@ai-sdk/xai";
@@ -17,17 +17,8 @@ const createModel = () => {
     const openai = createOpenAI({
       apiKey: CONFIG.LLM_API_KEY,
       baseURL: CONFIG.LLM_BASE_URL || 'https://api.openai.com/v1',
-      compatibility: 'strict',
-    })
-    model = openai(CONFIG.LLM_MODEL);
-  }
-  else if (CONFIG.LLM_PROVIDER === "openai-compatible") {
-    const openai = createOpenAI({
-      apiKey: CONFIG.LLM_API_KEY,
-      baseURL: CONFIG.LLM_BASE_URL,
-      compatibility: 'compatible',
-    })
-    model = openai(CONFIG.LLM_MODEL);
+    });
+    model = openai.chat(CONFIG.LLM_MODEL);
   }
   else if (CONFIG.LLM_PROVIDER === "google") {
     const google = createGoogleGenerativeAI({
@@ -48,7 +39,7 @@ const createTools = (executor: ToolExecutors = {}) => {
   const tools: Record<string, any> = {
     clear: tool({
       description: '清除與 AI 的聊天紀錄 (Clear the chat history with the AI)',
-      parameters: z.object({}),
+      inputSchema: z.object({}),
       execute: async () => {
         if (executor.clear) {
           const success = await executor.clear();
@@ -61,7 +52,7 @@ const createTools = (executor: ToolExecutors = {}) => {
   if (CONFIG.GOOGLE_MAP_API_KEY) {
     tools.geocode = tool({
       description: "使用 Google Maps 取得地點的經緯度。輸入地址或地點名稱，回傳該地點的經緯度。例如：'台北車站'。",
-      parameters: z.object({
+      inputSchema: z.object({
         address: z.string().describe("要查詢的地址或地點名稱，例如：'台北車站'。"),
       }),
       execute: async ({ address }) => {
@@ -76,7 +67,7 @@ const createTools = (executor: ToolExecutors = {}) => {
     });
     tools.weather = tool({
       description: "使用 Google Maps 取得地點的天氣資訊。輸入經緯度，回傳該地點的天氣資訊。例如：'25.0478, 121.517'。",
-      parameters: z.object({
+      inputSchema: z.object({
         latitude: z.number().describe("要查詢的地點緯度，例如：25.0478。"),
         longitude: z.number().describe("要查詢的地點經度，例如：121.517。"),
       }),
@@ -92,7 +83,7 @@ const createTools = (executor: ToolExecutors = {}) => {
     });
     tools.weather_forecast = tool({
       description: "使用 Google Maps 取得地點的天氣預報。輸入經緯度，回傳該地點的天氣預報。例如：'25.0478, 121.517'。",
-      parameters: z.object({
+      inputSchema: z.object({
         latitude: z.number().describe("要查詢的地點緯度，例如：25.0478。"),
         longitude: z.number().describe("要查詢的地點經度，例如：121.517。"),
         time_range: z.enum(["days", "hours"]).describe("要查詢預報的時間範圍，例如：'days' 或 'hours'。"),
@@ -117,7 +108,7 @@ const createTools = (executor: ToolExecutors = {}) => {
 - 需要根據使用者輸入的關鍵字與地理位置，提供地點建議
 
 請提供搜尋關鍵字、中心點經緯度與半徑，系統會回傳整理過的地點資訊，方便在 LINE 上閱讀。`,
-      parameters: z.object({
+      inputSchema: z.object({
         query: z.string().describe("要搜尋的關鍵字，例如：'台北車站附近的咖啡廳'。"),
         latitude: z.number().describe("搜尋中心點的緯度，例如台北車站為 25.0478。"),
         longitude: z.number().describe("搜尋中心點的經度，例如台北車站為 121.5170。"),
@@ -153,7 +144,7 @@ const createTools = (executor: ToolExecutors = {}) => {
   if (CONFIG.TAVILY_API_KEY) {
     tools.tavily_search = tool({
       description: '使用 Tavily 在網路上搜尋最新資訊，如果用戶想要搜尋地點或餐廳，請使用 google_map 工具。 (Search the latest information on the web using Tavily)',
-      parameters: z.object({
+      inputSchema: z.object({
         query: z.string().describe('The search query.'),
         // topic: z.enum(['general', 'news']).optional().default('general').describe('The topic of the search. Default is general. If you want to search for news, use "news".'),
         days: z.number().optional().default(3).describe("The number of days back from the current date to include in the search results. This specifies the time frame of data to be retrieved. Please note that this feature is only available when using the 'news' search topic"),
@@ -180,7 +171,7 @@ const createTools = (executor: ToolExecutors = {}) => {
     });
     tools.tavily_extract = tool({
       description: '使用 Tavily API 從一個或多個指定的 URL 中提取網頁內容',
-      parameters: z.object({
+      inputSchema: z.object({
         urls: z.string().describe('要提取內容的網頁 URL，可以是多個 URL，以逗號分隔'),
       }),
       execute: async ({ urls }) => {
@@ -205,7 +196,7 @@ const createTools = (executor: ToolExecutors = {}) => {
   return tools;
 }
 
-export const createChat = async (messages: CoreMessage[], executor: ToolExecutors = {}) => {
+export const createChat = async (messages: ModelMessage[], executor: ToolExecutors = {}) => {
   const model = createModel();
   if (!model) {
     throw new Error("No model found");
@@ -217,12 +208,12 @@ export const createChat = async (messages: CoreMessage[], executor: ToolExecutor
 
   const result = streamText({
     model,
-    maxTokens: CONFIG.LLM_MAX_TOKENS,
+    maxOutputTokens: CONFIG.LLM_MAX_TOKENS,
     temperature: CONFIG.LLM_TEMPERATURE,
     system: CONFIG.LLM_SYSTEM_ROLE || DEFAULT_SYSTEM_ROLE,
     messages,
     tools: tools,
-    maxSteps: 5,
+    stopWhen: stepCountIs(5),
     onError: ({ error }) => {
       console.error('[Error] streamText:', error);
       throw error;

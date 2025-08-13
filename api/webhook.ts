@@ -2,7 +2,7 @@ import { CONFIG } from "../utils/config";
 import { getMessages, setMessages, clearMessages } from "../lib/firestore";
 import { getContent, replyText } from "../lib/line";
 import { createChat } from "../lib/ai";
-import { CoreMessage } from 'ai';
+import { ModelMessage } from 'ai';
 
 const validateSignature = async (
   xLineSignature: string | null,
@@ -54,7 +54,7 @@ const handleLineMessage = async (event: any) => {
 
   try {
     const userMessages = await getMessages(userId);
-    const messages = [...userMessages] as CoreMessage[];
+    const messages = [...userMessages] as ModelMessage[];
 
     if (type === "image") {
       const buffer = await getData(event.message);
