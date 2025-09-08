@@ -200,7 +200,7 @@ const createTools = (executor: ToolExecutors = {}) => {
   return tools;
 }
 
-export const createChat = async (messages: ModelMessage[], executor: ToolExecutors = {}) => {
+export const createChat = async (messages: ModelMessage[], executor: ToolExecutors = {}, isText: boolean = true) => {
   const model = createModel();
   if (!model) {
     throw new Error("No model found");
@@ -216,7 +216,7 @@ export const createChat = async (messages: ModelMessage[], executor: ToolExecuto
     temperature: CONFIG.LLM_TEMPERATURE,
     system: CONFIG.LLM_SYSTEM_ROLE || DEFAULT_SYSTEM_ROLE,
     messages,
-    tools: tools,
+    tools: isText ? tools : null,
     stopWhen: stepCountIs(5),
     onError: ({ error }) => {
       console.error('[Error] streamText:', error);

@@ -59,6 +59,7 @@ const handleLineMessage = async (event: any) => {
     if (type === "image") {
       const buffer = await getData(event.message);
       if (!buffer) throw new Error("Failed to get image content");
+      messages.length = 0;
       messages.push({ role: "user", content: [{ type: 'image', image: buffer }] });
     } else {
       messages.push({ role: "user", content: text });
@@ -70,7 +71,7 @@ const handleLineMessage = async (event: any) => {
         skipSetMessages = true;
         return true;
       }).catch(() => false),
-    });
+    }, type !== "image");
     await replyText(message, replyToken);
 
     if (!skipSetMessages) {
