@@ -1,6 +1,10 @@
 import { getSettings, setSettings } from "../lib/neon";
+import { validateAuth } from "../lib/auth";
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!validateAuth(req)) {
+    return new Response("Unauthorized", { status: 401 });
+  }
   try {
     const settings = await getSettings();
     return new Response(JSON.stringify(settings || {}), {
@@ -14,6 +18,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!validateAuth(request)) {
+    return new Response("Unauthorized", { status: 401 });
+  }
   try {
     const body = await request.json();
     const requiredFields = ["provider", "model"];

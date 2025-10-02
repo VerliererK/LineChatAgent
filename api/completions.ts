@@ -1,6 +1,10 @@
 import { createChat } from "../lib/ai";
+import { validateAuth } from "../lib/auth";
 
 export async function POST(req: Request): Promise<Response> {
+  if (!validateAuth(req)) {
+    return new Response("Unauthorized", { status: 401 });
+  }
   const { messages } = (await req.json()) as { messages: { role: 'user' | 'assistant' | 'system'; content: string }[] };
   if (!Array.isArray(messages)) {
     return new Response("No messages provided", { status: 400 });

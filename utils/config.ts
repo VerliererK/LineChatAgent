@@ -4,6 +4,7 @@ export const CONFIG = {
   // required
   LINE_CHANNEL_ACCESS_TOKEN: process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "",
   LINE_CHANNEL_SECRET: process.env.LINE_CHANNEL_SECRET ?? "",
+  AUTH_KEY: process.env.AUTH_KEY ?? "",
 
   // optional
   GOOGLE_MAP_API_KEY: process.env.GOOGLE_MAP_API_KEY,

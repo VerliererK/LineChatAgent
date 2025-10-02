@@ -422,7 +422,25 @@
 </head>
 
 <body>
-  <div id="chat-container">
+  <div id="auth-modal" class="modal-overlay">
+    <div class="modal-wrapper" style="max-width: 400px;">
+      <div class="modal-content">
+        <h2>請輸入授權金鑰</h2>
+        <form id="auth-form">
+          <div class="form-group">
+            <label for="auth_key_input" class="required">Authorization Key</label>
+            <input type="password" id="auth_key_input" name="auth_key" placeholder="請輸入授權金鑰" required>
+          </div>
+          <div id="auth-error" class="error-message" style="display: none;"></div>
+          <div class="form-actions" style="justify-content: center;">
+            <button type="submit" id="save-auth-key">進入</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="chat-container" style="display: none;">
     <div id="header">
       <span>LINE Agent</span>
       <button id="settings-button" aria-label="設定">⚙️</button>
@@ -471,7 +489,7 @@
           <div class="form-group">
             <label for="system_role">System Role</label>
             <textarea id="system_role" name="system_role" rows="4"
-              placeholder="Define the assistant\'s behavior..."></textarea>
+              placeholder="Define the assistant's behavior..."></textarea>
           </div>
           <div class="form-group-inline">
             <div class="form-group">
@@ -509,9 +527,83 @@
     // 對話歷史紀錄
     let messages = [];
     let isWaitingForResponse = false; // 標記是否正在等待 API 回應
+    let authKey = '';
+    let chatInitialized = false;
 
     // --- DOMContentLoaded 事件監聽器 ---
     document.addEventListener('DOMContentLoaded', () => {
+      const authModal = document.getElementById('auth-modal');
+      const authForm = document.getElementById('auth-form');
+      const authKeyInput = document.getElementById('auth_key_input');
+      const authError = document.getElementById('auth-error');
+      const authSubmitButton = document.getElementById('save-auth-key');
+      const chatContainer = document.getElementById('chat-container');
+
+      const login = async (key) => {
+        if (!key) {
+          authModal.style.display = 'flex';
+          return;
+        }
+
+        authSubmitButton.disabled = true;
+        authSubmitButton.textContent = '驗證中...';
+        authError.style.display = 'none';
+
+        try {
+          const response = await fetch('/api/settings', {
+            headers: { 'Authorization': `Bearer ${key}` }
+          });
+
+          if (response.ok) {
+            // Key is valid
+            authKey = key;
+            sessionStorage.setItem('authKey', key);
+            authModal.style.display = 'none';
+            chatContainer.style.display = 'flex';
+            if (!chatInitialized) {
+              initializeChat();
+              chatInitialized = true;
+            }
+          } else {
+            // Key is invalid
+            sessionStorage.removeItem('authKey');
+            authModal.style.display = 'flex';
+            authKeyInput.value = '';
+            let errorMsg = '授權金鑰無效或伺服器錯誤。';
+            if (response.status === 401) {
+              errorMsg = '授權金鑰不正確。';
+            }
+            authError.textContent = errorMsg;
+            authError.style.display = 'block';
+          }
+        } catch (error) {
+          sessionStorage.removeItem('authKey');
+          authModal.style.display = 'flex';
+          authError.textContent = '無法連線至伺服器進行驗證。';
+          authError.style.display = 'block';
+        } finally {
+          authSubmitButton.disabled = false;
+          authSubmitButton.textContent = '進入';
+        }
+      };
+
+      authForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const keyFromInput = authKeyInput.value.trim();
+        if (keyFromInput) {
+          login(keyFromInput);
+        } else {
+          authError.textContent = '金鑰不可為空。';
+          authError.style.display = 'block';
+        }
+      });
+
+      // On initial load, try to login with stored key
+      const storedKey = sessionStorage.getItem('authKey');
+      login(storedKey);
+    });
+
+    function initializeChat() {
       // --- Settings Modal Elements ---
       const settingsButton = document.getElementById('settings-button');
       const settingsModal = document.getElementById('settings-modal');
@@ -534,7 +626,11 @@
         loader.style.display = 'flex';
 
         try {
-          const response = await fetch('/api/settings');
+          const response = await fetch('/api/settings', {
+            headers: {
+              'Authorization': `Bearer ${authKey}`
+            }
+          });
           if (!response.ok) {
             throw new Error('無法載入設定。');
           }
@@ -595,7 +691,10 @@
         try {
           const response = await fetch('/api/settings', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authKey}`
+            },
             body: JSON.stringify(settings),
           });
 
@@ -630,8 +729,11 @@
         }
       }
       // 初始歡迎訊息
-      addMessageToHistory('assistant', '你好！請問有什麼可以協助您的嗎？');
-      displayMessage('assistant', '你好！請問有什麼可以協助您的嗎？');
+      if (messages.length === 0) {
+        addMessageToHistory('assistant', '你好！請問有什麼可以協助您的嗎？');
+        displayMessage('assistant', '你好！請問有什麼可以協助您的嗎？');
+      }
+
 
       // 監聽傳送按鈕點擊
       sendButton.addEventListener('click', handleSendMessage);
@@ -644,7 +746,7 @@
 
       // 頁面載入時也調整一次，以防有預設內容
       adjustTextareaHeight();
-    });
+    }
 
     // --- 函數：處理訊息傳送 ---
     function handleSendMessage() {
@@ -752,7 +854,8 @@
         const response = await fetch('/api/completions', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authKey}`
           },
           body: JSON.stringify({ messages: messages }) // 發送完整對話歷史
         });
