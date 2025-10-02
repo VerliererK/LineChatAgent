@@ -203,7 +203,6 @@ const createTools = (executor: ToolExecutors = {}) => {
 
 export const createChat = async (messages: ModelMessage[], executor: ToolExecutors = {}, isText: boolean = true) => {
   const settings = await getLLMSettings();
-  console.log(settings);
   const model = createModel(settings);
   if (!model) {
     throw new Error("No model found");
