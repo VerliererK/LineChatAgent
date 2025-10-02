@@ -27,3 +27,24 @@ export const setMessages = async (id: string, messages: { role: string; content:
 export const clearMessages = async (id: string) => {
   await setMessages(id, []);
 };
+
+export const getSettings = async () => {
+  const result = await sql`SELECT value FROM settings WHERE key = 'settings'`;
+  if (result.length === 0) {
+    return null;
+  }
+  try {
+    return JSON.parse(result[0].value);
+  } catch {
+    return null;
+  }
+};
+
+export const setSettings = async (settings: Record<string, any>) => {
+  await sql`
+    INSERT INTO settings (key, value)
+    VALUES ('settings', ${JSON.stringify(settings)})
+    ON CONFLICT (key) DO UPDATE SET
+    value = EXCLUDED.value
+  `;
+};

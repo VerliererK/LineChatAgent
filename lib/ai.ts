@@ -1,5 +1,6 @@
 import DEFAULT_SYSTEM_ROLE from "./DEFAULT_SYSTEM_ROLE";
 import { CONFIG } from "../utils/config";
+import { getLLMSettings } from "../lib/settings";
 import { z } from 'zod';
 import { tool, stepCountIs, streamText, LanguageModel, ModelMessage } from 'ai';
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
@@ -10,31 +11,31 @@ export interface ToolExecutors {
   clear?: () => Promise<boolean>;
 }
 
-const createModel = () => {
+const createModel = (settings: any) => {
   let model: LanguageModel | undefined;
 
-  if (process.env.AI_GATEWAY_API_KEY && CONFIG.LLM_MODEL.startsWith("vercel")) {
-    return CONFIG.LLM_MODEL.replace("vercel/", "");
+  if (settings.LLM_PROVIDER === "vercel") {
+    return settings.LLM_MODEL;
   }
 
-  if (CONFIG.LLM_PROVIDER === "openai") {
+  if (settings.LLM_PROVIDER === "openai") {
     const openai = createOpenAI({
-      apiKey: CONFIG.LLM_API_KEY,
-      baseURL: CONFIG.LLM_BASE_URL || 'https://api.openai.com/v1',
+      apiKey: settings.LLM_API_KEY,
+      baseURL: settings.LLM_BASE_URL || 'https://api.openai.com/v1',
     });
-    model = openai.chat(CONFIG.LLM_MODEL);
+    model = openai.chat(settings.LLM_MODEL);
   }
-  else if (CONFIG.LLM_PROVIDER === "google") {
+  else if (settings.LLM_PROVIDER === "google") {
     const google = createGoogleGenerativeAI({
-      apiKey: CONFIG.LLM_API_KEY,
+      apiKey: settings.LLM_API_KEY,
     });
-    model = google(CONFIG.LLM_MODEL);
+    model = google(settings.LLM_MODEL);
   }
-  else if (CONFIG.LLM_PROVIDER === "xai") {
+  else if (settings.LLM_PROVIDER === "xai") {
     const xai = createXai({
-      apiKey: CONFIG.LLM_API_KEY,
+      apiKey: settings.LLM_API_KEY,
     });
-    model = xai(CONFIG.LLM_MODEL);
+    model = xai(settings.LLM_MODEL);
   }
   return model;
 }
@@ -201,7 +202,9 @@ const createTools = (executor: ToolExecutors = {}) => {
 }
 
 export const createChat = async (messages: ModelMessage[], executor: ToolExecutors = {}, isText: boolean = true) => {
-  const model = createModel();
+  const settings = await getLLMSettings();
+  console.log(settings);
+  const model = createModel(settings);
   if (!model) {
     throw new Error("No model found");
   }
@@ -212,9 +215,9 @@ export const createChat = async (messages: ModelMessage[], executor: ToolExecuto
 
   const result = streamText({
     model,
-    maxOutputTokens: CONFIG.LLM_MAX_TOKENS,
-    temperature: CONFIG.LLM_TEMPERATURE,
-    system: CONFIG.LLM_SYSTEM_ROLE || DEFAULT_SYSTEM_ROLE,
+    maxOutputTokens: settings.LLM_MAX_TOKENS,
+    temperature: settings.LLM_TEMPERATURE,
+    system: settings.LLM_SYSTEM_ROLE || DEFAULT_SYSTEM_ROLE,
     messages,
     tools: isText ? tools : null,
     stopWhen: stepCountIs(5),
@@ -226,7 +229,7 @@ export const createChat = async (messages: ModelMessage[], executor: ToolExecuto
 
   const controller = new AbortController();
   const { signal } = controller;
-  setTimeout(() => controller.abort(), CONFIG.LLM_TIMEOUT);
+  setTimeout(() => controller.abort(), settings.LLM_TIMEOUT);
 
   let message = "";
   for await (const textPart of result.textStream) {
