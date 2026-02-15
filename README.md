@@ -6,7 +6,7 @@
 ## 主要特色
 
 - **Line Webhook**：透過 Line Webhook 接收用戶訊息並使用 AI 進行回應，目前支援文字與圖片訊息 (圖片不儲存在資料庫)
-- **Vercel Functions**：啟用 Fluid compute 能有 60 秒的運行時間，能產生更多的回應內容 ( Line 不支援 Streaming 回應，所以要等待全部內容產生完畢才能回應 )
+- **Vercel Functions**：啟用 Fluid compute 能有 300 秒的運行時間，能產生更多的回應內容 ( Line 不支援 Streaming 回應，所以要等待全部內容產生完畢才能回應 )
 - **Vercel AI SDK**：支援 OpenAI (GPT-5) 或 Google Gemini (gemini-2.5-flash)
 - **Tool calling**：
   - 日期時間查詢

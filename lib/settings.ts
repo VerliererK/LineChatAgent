@@ -11,6 +11,6 @@ export const getLLMSettings = async () => {
     LLM_SYSTEM_ROLE: settings?.system_role ?? "",
     LLM_MAX_TOKENS: Number(settings?.max_tokens) || 4096,
     LLM_TEMPERATURE: Number(settings?.temperature) || undefined,
-    LLM_TIMEOUT: Number(settings?.timeout) || 58000,
+    LLM_TIMEOUT: Number(settings?.timeout) || 290, // default to 290 seconds to avoid Vercel's 300 second limit
   };
 };

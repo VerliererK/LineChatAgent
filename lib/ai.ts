@@ -221,7 +221,7 @@ export const createChat = async (messages: ModelMessage[], executor: ToolExecuto
 
   const controller = new AbortController();
   const { signal } = controller;
-  setTimeout(() => controller.abort(), settings.LLM_TIMEOUT);
+  setTimeout(() => controller.abort(), settings.LLM_TIMEOUT * 1000);
 
   let message = "";
   for await (const textPart of result.textStream) {
