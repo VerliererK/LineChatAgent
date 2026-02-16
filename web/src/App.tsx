@@ -90,6 +90,7 @@ interface Settings {
   temperature: string;
   max_tokens: string;
   timeout: string;
+  stop_when: string;
 }
 
 const defaultSettings: Settings = {
@@ -101,6 +102,7 @@ const defaultSettings: Settings = {
   temperature: "",
   max_tokens: "4096",
   timeout: "290",
+  stop_when: "10",
 };
 
 function SettingsPanel({ authKey, onClose }: { authKey: string; onClose: () => void }) {
@@ -212,6 +214,10 @@ function SettingsPanel({ authKey, onClose }: { authKey: string; onClose: () => v
             <div className="settings-field">
               <label>Timeout (seconds)</label>
               <input type="number" min="1" value={settings.timeout} onChange={(e) => update("timeout", e.target.value)} placeholder="290" />
+            </div>
+            <div className="settings-field">
+              <label>StopWhen</label>
+              <input type="number" min="1" max="20" value={settings.stop_when} onChange={(e) => update("stop_when", e.target.value)} placeholder="10" />
             </div>
             {message && <p className={message.type === "success" ? "success" : "error"}>{message.text}</p>}
             <div className="settings-actions">
