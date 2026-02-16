@@ -10,6 +10,11 @@ export interface ToolExecutors {
   clear?: () => Promise<boolean>;
 }
 
+export interface ChatOptions {
+  enableTools?: boolean;
+  toolExecutors?: ToolExecutors;
+}
+
 const createModel = (settings: any) => {
   let model: LanguageModel | undefined;
 
@@ -33,20 +38,18 @@ const createModel = (settings: any) => {
   return model;
 }
 
-const createTools = (executor: ToolExecutors = {}) => {
-  const tools: Record<string, any> = {
-    clear: tool({
+const createTools = (toolExecutors: ToolExecutors = {}) => {
+  const tools: Record<string, any> = {};
+  if (toolExecutors?.clear) {
+    tools.clear = tool({
       description: '清除與 AI 的聊天紀錄 (Clear the chat history with the AI)',
       inputSchema: z.object({}),
       execute: async () => {
-        if (executor.clear) {
-          const success = await executor.clear();
-          return success ? "Successfully cleared chat history" : "Failed to clear chat history";
-        }
-        return "Clear function not configured";
+        const success = await toolExecutors.clear();
+        return success ? "Successfully cleared chat history" : "Failed to clear chat history";
       },
-    }),
-  };
+    });
+  }
   if (CONFIG.GOOGLE_MAP_API_KEY) {
     tools.geocode = tool({
       description: "使用 Google Maps 取得地點的經緯度。輸入地址或地點名稱，回傳該地點的經緯度。例如：'台北車站'。",
@@ -197,32 +200,39 @@ const createTools = (executor: ToolExecutors = {}) => {
   return tools;
 }
 
-export const createChat = async (messages: ModelMessage[], executor: ToolExecutors = {}, isText: boolean = true) => {
+export const createChatConfig = async (messages: ModelMessage[], options: ChatOptions = {}) => {
+  const { enableTools = true, toolExecutors } = options;
   const settings = await getLLMSettings();
   const model = createModel(settings);
   if (!model) {
     throw new Error("No model found");
   }
 
-  const tools = createTools(executor);
-
-  const startTime = Date.now();
-
-  let aborted = false;
-  let partialSteps: any[] = [];
-
-  const result = streamText({
+  const tools = enableTools ? createTools(toolExecutors) : undefined;
+  return {
     model,
     maxOutputTokens: settings.LLM_MAX_TOKENS,
     temperature: settings.LLM_TEMPERATURE,
     system: settings.LLM_SYSTEM_ROLE || DEFAULT_SYSTEM_ROLE,
     messages,
-    tools: isText ? tools : undefined,
+    tools,
     stopWhen: stepCountIs(5),
     timeout: { totalMs: settings.LLM_TIMEOUT * 1000 },
     onError: ({ error }) => {
       console.error('[Error] streamText:', error);
-    },
+    }
+  };
+}
+
+export const createChat = async (messages: ModelMessage[], options: ChatOptions = {}) => {
+  const config = await createChatConfig(messages, options);
+
+  const startTime = Date.now();
+  let aborted = false;
+  let partialSteps: any[] = [];
+
+  const result = streamText({
+    ...config,
     onAbort: ({ steps }) => {
       aborted = true;
       partialSteps = steps;

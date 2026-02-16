@@ -67,11 +67,14 @@ const handleLineMessage = async (event: any) => {
 
     let skipSetMessages = false;
     const { message } = await createChat(messages, {
-      clear: () => clearMessages(userId).then(() => {
-        skipSetMessages = true;
-        return true;
-      }).catch(() => false),
-    }, type !== "image");
+      enableTools: type !== "image",
+      toolExecutors: {
+        clear: () => clearMessages(userId).then(() => {
+          skipSetMessages = true;
+          return true;
+        }).catch(() => false),
+      }
+    });
     await replyText(message, replyToken);
 
     if (!skipSetMessages) {
