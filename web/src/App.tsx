@@ -81,6 +81,152 @@ function compressImage(file: File, maxSize = 1024, quality = 0.85): Promise<File
   });
 }
 
+interface Settings {
+  provider: string;
+  model: string;
+  api_key: string;
+  base_url: string;
+  system_role: string;
+  temperature: string;
+  max_tokens: string;
+  timeout: string;
+}
+
+const defaultSettings: Settings = {
+  provider: "vercel",
+  model: "openai/gpt-5",
+  api_key: "",
+  base_url: "",
+  system_role: "",
+  temperature: "",
+  max_tokens: "4096",
+  timeout: "290",
+};
+
+function SettingsPanel({ authKey, onClose }: { authKey: string; onClose: () => void }) {
+  const [settings, setSettings] = useState<Settings>(defaultSettings);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings", {
+      headers: { Authorization: `Bearer ${authKey}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setSettings({
+          ...defaultSettings,
+          ...Object.fromEntries(
+            Object.entries(data).filter(([, v]) => v != null && v !== "")
+          ),
+        });
+      })
+      .catch(() => setMessage({ type: "error", text: "載入設定失敗。" }))
+      .finally(() => setLoading(false));
+  }, [authKey]);
+
+  useEffect(() => {
+    if (message?.type === "success") {
+      const timer = setTimeout(() => setMessage(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
+  const update = (field: keyof Settings, value: string) => {
+    setSettings((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${authKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(settings),
+      });
+      if (res.ok) {
+        setMessage({ type: "success", text: "設定已儲存。" });
+      } else {
+        const text = await res.text();
+        setMessage({ type: "error", text: text || "儲存失敗。" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "無法連線至伺服器。" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const canSave = settings.provider.trim() !== "" && settings.model.trim() !== "";
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="settings-header">
+          <h2>模型設定</h2>
+          <button className="settings-close-btn" onClick={onClose}>&times;</button>
+        </div>
+        {loading ? (
+          <div className="settings-body"><p>載入中...</p></div>
+        ) : (
+          <div className="settings-body">
+            <div className="settings-field">
+              <label className="required">Provider</label>
+              <select value={settings.provider} onChange={(e) => update("provider", e.target.value)}>
+                <option value="vercel">Vercel</option>
+                <option value="google">Google</option>
+                <option value="openai">OpenAI</option>
+              </select>
+            </div>
+            <div className="settings-field">
+              <label className="required">Model</label>
+              <input value={settings.model} onChange={(e) => update("model", e.target.value)} placeholder="e.g., openai/gpt-5" />
+            </div>
+            <div className="settings-field">
+              <label>API Key</label>
+              <input type="password" value={settings.api_key} onChange={(e) => update("api_key", e.target.value)} placeholder="Enter your API key" />
+            </div>
+            <div className="settings-field">
+              <label>Base URL (Optional)</label>
+              <input value={settings.base_url} onChange={(e) => update("base_url", e.target.value)} placeholder="e.g., https://api.example.com/v1" />
+            </div>
+            <div className="settings-field">
+              <label>System Role</label>
+              <textarea rows={4} value={settings.system_role} onChange={(e) => update("system_role", e.target.value)} placeholder="Define the assistant's behavior..." />
+            </div>
+            <div className="settings-field-inline">
+              <div className="settings-field">
+                <label>Max Tokens</label>
+                <input type="number" min="1" value={settings.max_tokens} onChange={(e) => update("max_tokens", e.target.value)} placeholder="4096" />
+              </div>
+              <div className="settings-field">
+                <label>Temperature</label>
+                <input type="number" step="0.1" min="0" max="2" value={settings.temperature} onChange={(e) => update("temperature", e.target.value)} placeholder="e.g., 0.7" />
+              </div>
+            </div>
+            <div className="settings-field">
+              <label>Timeout (seconds)</label>
+              <input type="number" min="1" value={settings.timeout} onChange={(e) => update("timeout", e.target.value)} placeholder="290" />
+            </div>
+            {message && <p className={message.type === "success" ? "success" : "error"}>{message.text}</p>}
+            <div className="settings-actions">
+              <button type="button" className="settings-cancel-btn" onClick={onClose}>取消</button>
+              <button className="settings-save-btn" onClick={save} disabled={!canSave || saving}>
+                {saving ? "儲存中..." : "儲存"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Chat({ authKey }: { authKey: string }) {
   const transportRef = useRef(
     new DefaultChatTransport({
@@ -95,6 +241,7 @@ function Chat({ authKey }: { authKey: string }) {
 
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<FileList | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -137,7 +284,17 @@ function Chat({ authKey }: { authKey: string }) {
 
   return (
     <div className="chat-container">
-      <header className="chat-header">LINE Agent</header>
+      <header className="chat-header">
+        <span>LINE Agent</span>
+        <button className="settings-btn" onClick={() => setShowSettings(true)} title="設定">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </header>
+
+      {showSettings && <SettingsPanel authKey={authKey} onClose={() => setShowSettings(false)} />}
 
       <div className="message-area">
         {messages.map((m) => (

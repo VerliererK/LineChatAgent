@@ -39,7 +39,7 @@
 
 .auth-card h2 {
   text-align: center;
-  font-size: 1.2em;
+  font-size: 1.2rem;
   color: var(--text);
 }
 
@@ -47,7 +47,7 @@
   padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  font-size: 1em;
+  font-size: 1rem;
   outline: none;
 }
 
@@ -57,7 +57,7 @@
   border-radius: 8px;
   background: var(--line-green);
   color: var(--white);
-  font-size: 1em;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -70,7 +70,7 @@
 .error {
   color: var(--error);
   text-align: center;
-  font-size: 0.9em;
+  font-size: 0.85rem;
 }
 
 /* --- Chat layout --- */
@@ -92,6 +92,30 @@
   font-weight: bold;
   text-align: center;
   flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.settings-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* --- Messages --- */
@@ -111,7 +135,7 @@
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.45;
-  font-size: 0.95em;
+  font-size: 1rem;
 }
 
 .bubble.user {
@@ -233,7 +257,7 @@
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 8px 14px;
-  font-size: 1em;
+  font-size: 1rem;
   line-height: 1.4;
   resize: none;
   overflow-y: hidden;
@@ -259,6 +283,162 @@
 
 .send-btn:hover { background: #05a54a; }
 .send-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+/* --- Settings panel --- */
+.settings-panel {
+  background: var(--white);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 440px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.settings-header h2 {
+  font-size: 1.2rem;
+  color: var(--text);
+}
+
+.settings-close-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 20px;
+  color: #999;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-close-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.settings-body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.settings-field label.required::after {
+  content: " *";
+  color: var(--error);
+}
+
+.settings-field input,
+.settings-field textarea,
+.settings-field select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 1rem;
+  outline: none;
+  font-family: inherit;
+  background: var(--white);
+}
+
+.settings-field input:focus,
+.settings-field textarea:focus,
+.settings-field select:focus {
+  border-color: var(--line-green);
+}
+
+.settings-field textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.settings-save-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: var(--line-green);
+  color: var(--white);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.settings-save-btn:hover {
+  background: #05a54a;
+}
+
+.settings-save-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.settings-field-inline {
+  display: flex;
+  gap: 12px;
+}
+
+.settings-field-inline .settings-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.settings-cancel-btn {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.settings-cancel-btn:hover {
+  background: var(--bg);
+}
+
+.success {
+  color: var(--line-green);
+  text-align: center;
+  font-size: 0.85rem;
+}
 
 /* --- Responsive --- */
 @media (max-width: 480px) {
