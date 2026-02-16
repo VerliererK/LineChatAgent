@@ -5,16 +5,16 @@
 
 ## 主要特色
 
-- **Line Webhook**：透過 Line Webhook 接收用戶訊息並使用 AI 進行回應，目前支援文字與圖片訊息 (圖片不儲存在資料庫)
-- **Vercel Functions**：啟用 Fluid compute 能有 300 秒的運行時間，能產生更多的回應內容 ( Line 不支援 Streaming 回應，所以要等待全部內容產生完畢才能回應 )
-- **Vercel AI SDK**：支援 OpenAI (GPT-5) 或 Google Gemini (gemini-2.5-flash)
+- **Line Webhook**：透過 Line Webhook 接收用戶訊息並使用 AI 進行回應，支援文字與圖片訊息（圖片不儲存在資料庫）
+- **Web UI**：提供網頁聊天介面，支援串流回應、圖片上傳與 LLM 模型設定面板
+- **Vercel Functions**：啟用 Fluid compute 能有 300 秒的運行時間，能產生更多的回應內容（Line 不支援 Streaming 回應，所以要等待全部內容產生完畢才能回應）
+- **Vercel AI SDK**：支援 Vercel AI Gateway（預設）、OpenAI、Google Gemini
 - **Tool calling**：
-  - 日期時間查詢
   - 對話記錄清除
-  - 天氣查詢 (需 Google Weather API)
-  - 地點搜尋 (需 Google Maps API)
-  - 網路搜尋 (需 Tavily API)
-- **Neon Database**：透過 Neon Serverless Postgres 儲存對話歷史與模型設定。
+  - 天氣查詢（需 Google Weather API）
+  - 地點搜尋（需 Google Maps API）
+  - 網路搜尋（需 Tavily API）
+- **Neon Database**：透過 Neon Serverless Postgres 儲存對話歷史與模型設定
 
 
 ## 安裝與設定

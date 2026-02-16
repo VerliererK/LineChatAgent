@@ -85,8 +85,9 @@ Vite + React app in `web/`, built and served as static files via `vercel.json`.
 
 - **Tech**: React 19, `@ai-sdk/react` `useChat` hook, `DefaultChatTransport`
 - **Auth gate**: Simple login form validates AUTH_KEY against `/api/settings`, stores in `sessionStorage`
-- **Chat**: `useChat` with `DefaultChatTransport({ api: '/api/chat', headers })` for streaming
-- **UI**: LINE-style theme (#06C755 green header, green user bubbles, white assistant bubbles), responsive design
+- **Chat**: `useChat` with `DefaultChatTransport({ api: '/api/chat', headers })` for streaming. Supports image upload with client-side compression.
+- **Settings panel**: Modal overlay opened via header gear button. Loads/saves 8 LLM fields (provider, model, api_key, base_url, system_role, temperature, max_tokens, timeout) via `GET/POST /api/settings`. Provider is a `<select>` limited to vercel/google/openai. Saves disabled when provider or model is empty. Success message auto-dismisses after 3 seconds.
+- **UI**: LINE-style theme (#06C755 green header, green user bubbles, white assistant bubbles), responsive design. Font sizes unified to 3 tiers: `1.2rem` (headings), `1rem` (body), `0.85rem` (labels/captions).
 - **Dev proxy**: `vite.config.ts` proxies `/api` to `http://localhost:3000`
 
 ### Deployment (`vercel.json`)
