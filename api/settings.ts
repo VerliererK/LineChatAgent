@@ -1,5 +1,8 @@
 import { getSettings, setSettings } from "../lib/neon";
 import { validateAuth } from "../lib/auth";
+import { encrypt } from "../lib/crypto";
+
+const ENC_PREFIX = 'enc:';
 
 export async function GET(req: Request) {
   if (!validateAuth(req)) {
@@ -29,6 +32,15 @@ export async function POST(request: Request) {
         return new Response(`Missing required field: ${field}`, { status: 400 });
       }
     }
+
+    // If api_key is encrypted (unchanged from GET) or empty, preserve existing value
+    if (!body.api_key || body.api_key.startsWith(ENC_PREFIX)) {
+      const existing = await getSettings();
+      body.api_key = existing?.api_key ?? '';
+    } else {
+      body.api_key = await encrypt(body.api_key);
+    }
+
     await setSettings(body);
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
