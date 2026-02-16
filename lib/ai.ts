@@ -216,7 +216,7 @@ export const createChatConfig = async (messages: ModelMessage[], options: ChatOp
     system: settings.LLM_SYSTEM_ROLE || DEFAULT_SYSTEM_ROLE,
     messages,
     tools,
-    stopWhen: stepCountIs(5),
+    stopWhen: stepCountIs(10),
     timeout: { totalMs: settings.LLM_TIMEOUT * 1000 },
     onError: ({ error }) => {
       console.error('[Error] streamText:', error);
