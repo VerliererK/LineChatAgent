@@ -39,7 +39,7 @@
 
 .auth-card h2 {
   text-align: center;
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   color: var(--text);
 }
 
@@ -47,7 +47,7 @@
   padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 1.1rem;
   outline: none;
 }
 
@@ -57,7 +57,7 @@
   border-radius: 8px;
   background: var(--line-green);
   color: var(--white);
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -70,7 +70,7 @@
 .error {
   color: var(--error);
   text-align: center;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 /* --- Chat layout --- */
@@ -135,7 +135,7 @@
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.45;
-  font-size: 1rem;
+  font-size: 1.1rem;
 }
 
 .bubble.user {
@@ -257,7 +257,7 @@
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 8px 14px;
-  font-size: 1rem;
+  font-size: 1.1rem;
   line-height: 1.4;
   resize: none;
   overflow-y: hidden;
@@ -307,7 +307,7 @@
 }
 
 .settings-header h2 {
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   color: var(--text);
 }
 
@@ -345,7 +345,7 @@
 }
 
 .settings-field label {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: #555;
 }
@@ -362,7 +362,7 @@
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 1.1rem;
   outline: none;
   font-family: inherit;
   background: var(--white);
@@ -386,7 +386,7 @@
   border-radius: 8px;
   background: var(--line-green);
   color: var(--white);
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
@@ -424,7 +424,7 @@
   border-radius: 8px;
   background: var(--white);
   color: var(--text);
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
@@ -437,7 +437,7 @@
 .success {
   color: var(--line-green);
   text-align: center;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 /* --- Responsive --- */
