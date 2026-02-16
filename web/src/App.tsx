@@ -54,6 +54,33 @@ function AuthGate({ onAuth }: { onAuth: (key: string) => void }) {
   );
 }
 
+function compressImage(file: File, maxSize = 1024, quality = 0.85): Promise<File> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/")) return resolve(file);
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxSize || height > maxSize) {
+        const ratio = Math.min(maxSize / width, maxSize / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          resolve(new File([blob!], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        quality,
+      );
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 function Chat({ authKey }: { authKey: string }) {
   const transportRef = useRef(
     new DefaultChatTransport({
@@ -67,8 +94,10 @@ function Chat({ authKey }: { authKey: string }) {
   });
 
   const [input, setInput] = useState("");
+  const [files, setFiles] = useState<FileList | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isLoading = status === "streaming" || status === "submitted";
 
   useEffect(() => {
@@ -83,12 +112,20 @@ function Chat({ authKey }: { authKey: string }) {
     }
   }, [input]);
 
-  const send = (e?: React.SyntheticEvent) => {
+  const send = async (e?: React.SyntheticEvent) => {
     e?.preventDefault();
     const text = input.trim();
-    if (!text || isLoading) return;
+    if ((!text && !files) || isLoading) return;
     setInput("");
-    sendMessage({ text });
+    setFiles(null);
+    let compressed: FileList | undefined;
+    if (files) {
+      const dt = new DataTransfer();
+      const results = await Promise.all(Array.from(files).map((f) => compressImage(f)));
+      results.forEach((f) => dt.items.add(f));
+      compressed = dt.files;
+    }
+    sendMessage({ text, files: compressed });
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -106,10 +143,14 @@ function Chat({ authKey }: { authKey: string }) {
         {messages.map((m) => (
           <div key={m.id} className={`bubble ${m.role}`}>
             {m.parts
-              .filter((p) => p.type === "text")
-              .map((p, i) => (
-                <span key={i}>{p.text}</span>
-              ))}
+              .filter((p) => p.type === "text" || p.type === "file")
+              .map((p, i) =>
+                p.type === "file" ? (
+                  <img key={i} src={p.url} alt="uploaded" />
+                ) : (
+                  <span key={i}>{p.text}</span>
+                )
+              )}
           </div>
         ))}
 
@@ -125,6 +166,57 @@ function Chat({ authKey }: { authKey: string }) {
       </div>
 
       <form className="input-area" onSubmit={send}>
+        {files && files.length > 0 && (
+          <div className="image-preview">
+            {Array.from(files).map((f, i) => (
+              <div key={i} className="image-preview-item">
+                <img src={URL.createObjectURL(f)} alt="preview" />
+                <button
+                  type="button"
+                  className="remove-btn"
+                  onClick={() => {
+                    const dt = new DataTransfer();
+                    Array.from(files).forEach((file, idx) => {
+                      if (idx !== i) dt.items.add(file);
+                    });
+                    setFiles(dt.files.length > 0 ? dt.files : null);
+                  }}
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) {
+              const dt = new DataTransfer();
+              Array.from(e.target.files).forEach((f) => dt.items.add(f));
+              setFiles(dt.files);
+            }
+            e.target.value = "";
+          }}
+        />
+        <button
+          type="button"
+          className="attach-btn"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"
+              stroke="#666"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
         <textarea
           ref={textareaRef}
           rows={1}
@@ -133,7 +225,7 @@ function Chat({ authKey }: { authKey: string }) {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
         />
-        <button type="submit" className="send-btn" disabled={isLoading || !input.trim()}>
+        <button type="submit" className="send-btn" disabled={isLoading || (!input.trim() && !files)}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
             <path d="M22 2L11 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
