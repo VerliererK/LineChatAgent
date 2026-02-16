@@ -1,12 +1,11 @@
 {
   "dependencies": {
-    "@ai-sdk/google": "^2.0.17",
-    "@ai-sdk/openai": "^2.0.42",
-    "@ai-sdk/xai": "^2.0.23",
+    "@ai-sdk/google": "^3.0.29",
+    "@ai-sdk/openai": "^3.0.29",
     "@neondatabase/serverless": "^1.0.2",
-    "ai": "^5.0.59"
+    "ai": "^6.0.86"
   },
   "devDependencies": {
-    "@types/node": "^24.2.1"
+    "@types/node": "^25.2.3"
   }
 }

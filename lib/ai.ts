@@ -5,10 +5,14 @@ import { z } from 'zod';
 import { tool, stepCountIs, streamText, LanguageModel, ModelMessage } from 'ai';
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createOpenAI } from "@ai-sdk/openai";
-import { createXai } from "@ai-sdk/xai";
 
 export interface ToolExecutors {
   clear?: () => Promise<boolean>;
+}
+
+export interface ChatOptions {
+  enableTools?: boolean;
+  toolExecutors?: ToolExecutors;
 }
 
 const createModel = (settings: any) => {
@@ -31,37 +35,29 @@ const createModel = (settings: any) => {
     });
     model = google(settings.LLM_MODEL);
   }
-  else if (settings.LLM_PROVIDER === "xai") {
-    const xai = createXai({
-      apiKey: settings.LLM_API_KEY,
-    });
-    model = xai(settings.LLM_MODEL);
-  }
   return model;
 }
 
-const createTools = (executor: ToolExecutors = {}) => {
-  const tools: Record<string, any> = {
-    clear: tool({
+const createTools = (toolExecutors: ToolExecutors = {}) => {
+  const tools: Record<string, any> = {};
+  if (toolExecutors?.clear) {
+    tools.clear = tool({
       description: '清除與 AI 的聊天紀錄 (Clear the chat history with the AI)',
       inputSchema: z.object({}),
       execute: async () => {
-        if (executor.clear) {
-          const success = await executor.clear();
-          return success ? "Successfully cleared chat history" : "Failed to clear chat history";
-        }
-        return "Clear function not configured";
+        const success = await toolExecutors.clear();
+        return success ? "Successfully cleared chat history" : "Failed to clear chat history";
       },
-    }),
-  };
+    });
+  }
   if (CONFIG.GOOGLE_MAP_API_KEY) {
     tools.geocode = tool({
       description: "使用 Google Maps 取得地點的經緯度。輸入地址或地點名稱，回傳該地點的經緯度。例如：'台北車站'。",
       inputSchema: z.object({
         address: z.string().describe("要查詢的地址或地點名稱，例如：'台北車站'。"),
       }),
-      execute: async ({ address }) => {
-        const result = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${CONFIG.GOOGLE_MAP_API_KEY}`)
+      execute: async ({ address }, { abortSignal }) => {
+        const result = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${CONFIG.GOOGLE_MAP_API_KEY}`, { signal: abortSignal })
           .then(response => response.json())
           .catch(err => {
             console.error('[Error] geocode: ', err);
@@ -76,8 +72,8 @@ const createTools = (executor: ToolExecutors = {}) => {
         latitude: z.number().describe("要查詢的地點緯度，例如：25.0478。"),
         longitude: z.number().describe("要查詢的地點經度，例如：121.517。"),
       }),
-      execute: async ({ latitude, longitude }) => {
-        const result = await fetch(`https://weather.googleapis.com/v1/currentConditions:lookup?key=${CONFIG.GOOGLE_MAP_API_KEY}&location.latitude=${latitude}&location.longitude=${longitude}`)
+      execute: async ({ latitude, longitude }, { abortSignal }) => {
+        const result = await fetch(`https://weather.googleapis.com/v1/currentConditions:lookup?key=${CONFIG.GOOGLE_MAP_API_KEY}&location.latitude=${latitude}&location.longitude=${longitude}`, { signal: abortSignal })
           .then(response => response.json())
           .catch(err => {
             console.error('[Error] weather: ', err);
@@ -95,8 +91,8 @@ const createTools = (executor: ToolExecutors = {}) => {
         hours: z.number().optional().default(24).describe("要查詢的小時數，例如：24。僅在 time_range 為 'hours' 時有效。最大值為 240。"),
         days: z.number().optional().default(3).describe("要查詢的天數，例如：3。僅在 time_range 為 'days' 時有效。最大值為 10。"),
       }),
-      execute: async ({ latitude, longitude, time_range, hours, days }) => {
-        const result = await fetch(`https://weather.googleapis.com/v1/forecast/${time_range}:lookup?key=${CONFIG.GOOGLE_MAP_API_KEY}&location.latitude=${latitude}&location.longitude=${longitude}&${time_range}=${time_range === "hours" ? hours : days}`)
+      execute: async ({ latitude, longitude, time_range, hours, days }, { abortSignal }) => {
+        const result = await fetch(`https://weather.googleapis.com/v1/forecast/${time_range}:lookup?key=${CONFIG.GOOGLE_MAP_API_KEY}&location.latitude=${latitude}&location.longitude=${longitude}&${time_range}=${time_range === "hours" ? hours : days}`, { signal: abortSignal })
           .then(response => response.json())
           .catch(err => {
             console.error('[Error] weather: ', err);
@@ -120,9 +116,10 @@ const createTools = (executor: ToolExecutors = {}) => {
         radius: z.number().optional().default(1000).describe("搜尋半徑（公尺），最大 50,000 公尺，預設為 1000 公尺。"),
         language: z.string().optional().default('zh-TW').describe("搜尋結果的語言，預設為 'zh-TW'。"),
       }),
-      execute: async ({ query, latitude, longitude, radius, language }) => {
+      execute: async ({ query, latitude, longitude, radius, language }, { abortSignal }) => {
         console.log(`[Info] google_map: ${query}, ${latitude}, ${longitude}, ${radius}, ${language}`);
         const result = await fetch('https://places.googleapis.com/v1/places:searchText', {
+          signal: abortSignal,
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': CONFIG.GOOGLE_MAP_API_KEY,
@@ -156,8 +153,9 @@ const createTools = (executor: ToolExecutors = {}) => {
         time_range: z.enum(['day', 'week', 'month', 'year']).optional().default('day').describe('The time range of the search. Default is day.'),
         maxResults: z.number().optional().default(5).describe('The maximum number of results to return. Default is 5.'),
       }),
-      execute: async ({ query, time_range, maxResults }) => {
+      execute: async ({ query, time_range, maxResults }, { abortSignal }) => {
         const result = await fetch("https://api.tavily.com/search", {
+          signal: abortSignal,
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -179,8 +177,9 @@ const createTools = (executor: ToolExecutors = {}) => {
       inputSchema: z.object({
         urls: z.string().describe('要提取內容的網頁 URL，可以是多個 URL，以逗號分隔'),
       }),
-      execute: async ({ urls }) => {
+      execute: async ({ urls }, { abortSignal }) => {
         const result = await fetch("https://api.tavily.com/extract", {
+          signal: abortSignal,
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -201,44 +200,58 @@ const createTools = (executor: ToolExecutors = {}) => {
   return tools;
 }
 
-export const createChat = async (messages: ModelMessage[], executor: ToolExecutors = {}, isText: boolean = true) => {
+export const createChatConfig = async (messages: ModelMessage[], options: ChatOptions = {}) => {
+  const { enableTools = true, toolExecutors } = options;
   const settings = await getLLMSettings();
   const model = createModel(settings);
   if (!model) {
     throw new Error("No model found");
   }
 
-  const tools = createTools(executor);
-
-  const startTime = Date.now();
-
-  const result = streamText({
+  const tools = enableTools ? createTools(toolExecutors) : undefined;
+  return {
     model,
     maxOutputTokens: settings.LLM_MAX_TOKENS,
     temperature: settings.LLM_TEMPERATURE,
     system: settings.LLM_SYSTEM_ROLE || DEFAULT_SYSTEM_ROLE,
     messages,
-    tools: isText ? tools : null,
+    tools,
     stopWhen: stepCountIs(5),
+    timeout: { totalMs: settings.LLM_TIMEOUT * 1000 },
     onError: ({ error }) => {
       console.error('[Error] streamText:', error);
-      throw error;
+    }
+  };
+}
+
+export const createChat = async (messages: ModelMessage[], options: ChatOptions = {}) => {
+  const config = await createChatConfig(messages, options);
+
+  const startTime = Date.now();
+  let aborted = false;
+  let partialSteps: any[] = [];
+
+  const result = streamText({
+    ...config,
+    onAbort: ({ steps }) => {
+      aborted = true;
+      partialSteps = steps;
     },
   });
 
-  const controller = new AbortController();
-  const { signal } = controller;
-  setTimeout(() => controller.abort(), settings.LLM_TIMEOUT);
-
   let message = "";
-  for await (const textPart of result.textStream) {
-    if (signal.aborted) break;
-    message += textPart;
+  try {
+    for await (const textPart of result.textStream) {
+      message += textPart;
+    }
+  } catch (e) {
+    if (!aborted) throw e;
   }
 
-  if (signal.aborted) {
+  if (aborted) {
     const elapsed = Date.now() - startTime;
-    console.log(`[Info] token: , finish_reason: timeout, tool_usage: , elapsed: ${elapsed}ms`);
+    const toolUsage = partialSteps.flatMap(step => step.toolResults).map(r => r.toolName).join(',');
+    console.log(`[Info] token: , finish_reason: timeout, tool_usage: ${toolUsage}, elapsed: ${elapsed}ms`);
     if (message)
       message += "...";
     else
