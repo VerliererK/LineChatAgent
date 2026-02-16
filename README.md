@@ -37,6 +37,7 @@
    | `AI_GATEWAY_API_KEY` | [Vercel AI Gateway](https://vercel.com/docs/ai-gateway/getting-started#set-up-your-api-key) 的 API 金鑰。當 Provider 為 `vercel` (預設) 時使用。 |
    | `LINE_CHANNEL_ACCESS_TOKEN` | [Line Developers Console](https://developers.line.biz/console/) 建立 Channel 後取得 |
    | `LINE_CHANNEL_SECRET` | 同上 |
+   | `ENCRYPTION_KEY` | (可選) API Key 加密用的 32-byte hex 金鑰。未設定時 API Key 以明文儲存。 |
    | `GOOGLE_MAP_API_KEY` | (可選) [Google Cloud Console](https://console.cloud.google.com/) 啟用 Places API 和 Weather API 並取得 |
    | `TAVILY_API_KEY` | (可選) [Tavily AI](https://tavily.com/) 註冊取得 |
 

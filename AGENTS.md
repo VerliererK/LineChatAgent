@@ -40,7 +40,7 @@ Vercel Functions auto-discovered from `/api`. Each file exports named HTTP metho
 
 - **webhook.ts** — LINE webhook receiver. Validates HMAC-SHA256 signature, handles text/image messages.
 - **chat.ts** — Streaming AI chat endpoint for the web UI. Protected by AUTH_KEY. Receives `UIMessage[]` from `useChat`, converts via `convertToModelMessages()`, returns `toUIMessageStreamResponse()`.
-- **settings.ts** — GET/POST LLM configuration. Protected by AUTH_KEY bearer token.
+- **settings.ts** — GET/POST LLM configuration. Protected by AUTH_KEY bearer token. GET returns raw DB values (api_key stored encrypted). POST encrypts new api_key via `lib/crypto.ts`; preserves existing encrypted value when unchanged.
 - **completions.ts** — Direct (non-streaming) AI chat endpoint. Protected by AUTH_KEY bearer token.
 
 ### Core Library (`lib/`)
@@ -50,11 +50,12 @@ Vercel Functions auto-discovered from `/api`. Each file exports named HTTP metho
 - **line.ts** — LINE Messaging API helpers (reply, push, get image content).
 - **auth.ts** — Bearer token validation against `CONFIG.AUTH_KEY`.
 - **DEFAULT_SYSTEM_ROLE.ts** — System prompt enforcing no-Markdown output (LINE limitation), Taiwan timezone, and tool-first behavior.
-- **settings.ts** — Helper to load LLM settings from DB with defaults.
+- **settings.ts** — Helper to load LLM settings from DB with defaults. Decrypts `api_key` via `lib/crypto.ts` before returning.
+- **crypto.ts** — AES-256-GCM encryption/decryption using Web Crypto API (`crypto.subtle`). `encrypt()` produces `enc:<iv>:<data>` format; `decrypt()` restores plaintext. Falls back to passthrough when `ENCRYPTION_KEY` is unset or data is not encrypted.
 
 ### Configuration (`utils/config.ts`)
 
-Environment variables loaded at runtime. `GOOGLE_MAP_API_KEY` and `TAVILY_API_KEY` are optional and control which tools are available.
+Environment variables loaded at runtime. `GOOGLE_MAP_API_KEY` and `TAVILY_API_KEY` are optional and control which tools are available. `ENCRYPTION_KEY` (optional, 32-byte hex) enables AES-256-GCM encryption for `api_key` in the database.
 
 ### Database Schema (`database-schema.sql`)
 
