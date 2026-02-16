@@ -4,21 +4,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-LINE chatbot deployed on Vercel Functions, powered by AI SDK v6 with tool calling, Neon PostgreSQL for persistence, and a web UI for settings management. Written in Traditional Chinese (zh-TW) context.
+LINE chatbot deployed on Vercel Functions, powered by AI SDK v6 with tool calling, Neon PostgreSQL for persistence, and a React web UI for chat and settings management. Written in Traditional Chinese (zh-TW) context.
 
 ## Development Commands
 
-No build/test/lint scripts are defined. The project uses Vercel's native TypeScript support with no build step.
-
 ```bash
-# Type checking (must use --skipLibCheck due to third-party type issues)
+# Type checking — backend (must use --skipLibCheck due to third-party type issues)
 npx -p typescript tsc --noEmit --skipLibCheck
+
+# Type checking — frontend
+cd web && npx tsc -b --noEmit
+
+# Build frontend
+cd web && npm run build
 
 # Deploy (handled by Vercel CLI or Git push)
 vercel
 
-# Local development
+# Local development (backend)
 vercel dev
+
+# Local development (frontend, proxies /api to localhost:3000)
+cd web && npm run dev
 ```
 
 ## Architecture
@@ -32,12 +39,13 @@ LINE message → `api/webhook.ts` (signature validation) → `lib/neon.ts` (load
 Vercel Functions auto-discovered from `/api`. Each file exports named HTTP methods (`GET`, `POST`).
 
 - **webhook.ts** — LINE webhook receiver. Validates HMAC-SHA256 signature, handles text/image messages.
+- **chat.ts** — Streaming AI chat endpoint for the web UI. Protected by AUTH_KEY. Receives `UIMessage[]` from `useChat`, converts via `convertToModelMessages()`, returns `toUIMessageStreamResponse()`.
 - **settings.ts** — GET/POST LLM configuration. Protected by AUTH_KEY bearer token.
-- **completions.ts** — Direct AI chat endpoint. Protected by AUTH_KEY bearer token.
+- **completions.ts** — Direct (non-streaming) AI chat endpoint. Protected by AUTH_KEY bearer token.
 
 ### Core Library (`lib/`)
 
-- **ai.ts** — Central module. `createModel()` instantiates provider-specific models (Vercel/OpenAI/Google). `createTools()` conditionally registers tools based on available API keys. `createChat()` orchestrates streaming with AI SDK v6's built-in `timeout` and `onAbort`, propagating `abortSignal` to all tool fetch calls.
+- **ai.ts** — Central module. `createModel()` instantiates provider-specific models (Vercel/OpenAI/Google). `createTools()` conditionally registers tools based on available API keys. Both are exported for use by `api/chat.ts` and `api/webhook.ts`. `createChat()` orchestrates streaming with AI SDK v6's built-in `timeout` and `onAbort`, propagating `abortSignal` to all tool fetch calls.
 - **neon.ts** — Database queries for `users` (conversation history as JSONB) and `settings` tables.
 - **line.ts** — LINE Messaging API helpers (reply, push, get image content).
 - **auth.ts** — Bearer token validation against `CONFIG.AUTH_KEY`.
@@ -68,6 +76,24 @@ All network tools receive `abortSignal` from AI SDK and pass it to `fetch` for p
 - `ModelMessage` type for conversation history
 - `inputSchema` with Zod for tool parameter validation
 - Tools use `{ abortSignal }` from second `execute` parameter
+- `convertToModelMessages()` converts `UIMessage[]` from frontend to `ModelMessage[]`
+- `toUIMessageStreamResponse()` returns streaming Response for `useChat`
+
+### Web Frontend (`web/`)
+
+Vite + React app in `web/`, built and served as static files via `vercel.json`.
+
+- **Tech**: React 19, `@ai-sdk/react` `useChat` hook, `DefaultChatTransport`
+- **Auth gate**: Simple login form validates AUTH_KEY against `/api/settings`, stores in `sessionStorage`
+- **Chat**: `useChat` with `DefaultChatTransport({ api: '/api/chat', headers })` for streaming
+- **UI**: LINE-style theme (#06C755 green header, green user bubbles, white assistant bubbles), responsive design
+- **Dev proxy**: `vite.config.ts` proxies `/api` to `http://localhost:3000`
+
+### Deployment (`vercel.json`)
+
+- `buildCommand`: `cd web && npm install && npm run build`
+- `outputDirectory`: `web/dist`
+- Backend API routes (`api/`) are auto-discovered by Vercel alongside the static frontend
 
 ## Key Constraints
 
