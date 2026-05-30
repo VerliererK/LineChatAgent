@@ -32,6 +32,7 @@ const createModel = (settings: any) => {
   else if (settings.LLM_PROVIDER === "google") {
     const google = createGoogleGenerativeAI({
       apiKey: settings.LLM_API_KEY,
+      baseURL: settings.LLM_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta',
     });
     model = google(settings.LLM_MODEL);
   }
