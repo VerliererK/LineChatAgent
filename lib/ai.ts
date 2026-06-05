@@ -41,6 +41,19 @@ const createModel = (settings: any) => {
 
 const createTools = (toolExecutors: ToolExecutors = {}) => {
   const tools: Record<string, any> = {};
+  tools.current_time = tool({
+    description: "取得當前台北時間 (Asia/Taipei, UTC+8)，用於理解今天、明天、現在等相對時間，或進行時區換算。",
+    inputSchema: z.object({}),
+    execute: async () => {
+      const now = new Date();
+      return {
+        taipeiTime: now.toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false }),
+        timeZone: "Asia/Taipei",
+        utcOffset: "UTC+8",
+        utcTime: now.toISOString(),
+      };
+    },
+  });
   if (toolExecutors?.clear) {
     tools.clear = tool({
       description: '清除與 AI 的聊天紀錄 (Clear the chat history with the AI)',
