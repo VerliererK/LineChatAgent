@@ -55,23 +55,25 @@ const createTools = (toolExecutors: ToolExecutors = {}) => {
     },
   });
   if (toolExecutors?.clear) {
+    const clear = toolExecutors.clear;
     tools.clear = tool({
       description: '清除與 AI 的聊天紀錄 (Clear the chat history with the AI)',
       inputSchema: z.object({}),
       execute: async () => {
-        const success = await toolExecutors.clear();
+        const success = await clear();
         return success ? "Successfully cleared chat history" : "Failed to clear chat history";
       },
     });
   }
   if (CONFIG.GOOGLE_MAP_API_KEY) {
+    const apiKey = CONFIG.GOOGLE_MAP_API_KEY;
     tools.geocode = tool({
       description: "使用 Google Maps 取得地點的經緯度。輸入地址或地點名稱，回傳該地點的經緯度。例如：'台北車站'。",
       inputSchema: z.object({
         address: z.string().describe("要查詢的地址或地點名稱，例如：'台北車站'。"),
       }),
       execute: async ({ address }, { abortSignal }) => {
-        const result = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${CONFIG.GOOGLE_MAP_API_KEY}`, { signal: abortSignal })
+        const result = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`, { signal: abortSignal })
           .then(response => response.json())
           .catch(err => {
             console.error('[Error] geocode: ', err);
@@ -87,7 +89,7 @@ const createTools = (toolExecutors: ToolExecutors = {}) => {
         longitude: z.number().describe("要查詢的地點經度，例如：121.517。"),
       }),
       execute: async ({ latitude, longitude }, { abortSignal }) => {
-        const result = await fetch(`https://weather.googleapis.com/v1/currentConditions:lookup?key=${CONFIG.GOOGLE_MAP_API_KEY}&location.latitude=${latitude}&location.longitude=${longitude}`, { signal: abortSignal })
+        const result = await fetch(`https://weather.googleapis.com/v1/currentConditions:lookup?key=${apiKey}&location.latitude=${latitude}&location.longitude=${longitude}`, { signal: abortSignal })
           .then(response => response.json())
           .catch(err => {
             console.error('[Error] weather: ', err);
@@ -106,7 +108,7 @@ const createTools = (toolExecutors: ToolExecutors = {}) => {
         days: z.number().optional().default(3).describe("要查詢的天數，例如：3。僅在 time_range 為 'days' 時有效。最大值為 10。"),
       }),
       execute: async ({ latitude, longitude, time_range, hours, days }, { abortSignal }) => {
-        const result = await fetch(`https://weather.googleapis.com/v1/forecast/${time_range}:lookup?key=${CONFIG.GOOGLE_MAP_API_KEY}&location.latitude=${latitude}&location.longitude=${longitude}&${time_range}=${time_range === "hours" ? hours : days}`, { signal: abortSignal })
+        const result = await fetch(`https://weather.googleapis.com/v1/forecast/${time_range}:lookup?key=${apiKey}&location.latitude=${latitude}&location.longitude=${longitude}&${time_range}=${time_range === "hours" ? hours : days}`, { signal: abortSignal })
           .then(response => response.json())
           .catch(err => {
             console.error('[Error] weather: ', err);
@@ -136,7 +138,7 @@ const createTools = (toolExecutors: ToolExecutors = {}) => {
           signal: abortSignal,
           headers: {
             'Content-Type': 'application/json',
-            'X-Goog-Api-Key': CONFIG.GOOGLE_MAP_API_KEY,
+            'X-Goog-Api-Key': apiKey,
             'X-Goog-FieldMask': 'places.displayName,places.googleMapsUri,places.rating,places.priceLevel',
             // places.rating only 1000 free requests per month, others are 5000 free requests per month
           },
@@ -232,7 +234,7 @@ export const createChatConfig = async (messages: ModelMessage[], options: ChatOp
     tools,
     stopWhen: stepCountIs(settings.LLM_STOP_WHEN),
     timeout: { totalMs: settings.LLM_TIMEOUT * 1000 },
-    onError: ({ error }) => {
+    onError: ({ error }: { error: unknown }) => {
       console.error('[Error] streamText:', error);
     }
   };

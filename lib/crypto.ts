@@ -1,7 +1,7 @@
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 const PREFIX = 'enc:';
 
-function toBytes(hex: string): Uint8Array {
+function toBytes(hex: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from({ length: hex.length / 2 }, (_, i) =>
     parseInt(hex.slice(i * 2, i * 2 + 2), 16),
   );
