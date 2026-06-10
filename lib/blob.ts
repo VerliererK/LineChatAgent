@@ -1,5 +1,6 @@
 import { put, del } from '@vercel/blob';
 import sharp from 'sharp';
+import type { ModelMessage } from 'ai';
 
 const MAX_DIMENSION = 1280;
 const JPEG_QUALITY = 85;
@@ -7,7 +8,7 @@ const JPEG_QUALITY = 85;
 export const isBlobEnabled = () =>
   !!(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN);
 
-export async function resizeImage(data: ArrayBuffer | Buffer): Promise<Buffer> {
+async function resizeImage(data: ArrayBuffer | Buffer): Promise<Buffer> {
   const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
   return sharp(buffer)
     .rotate() // 依 EXIF 方向自動轉正
@@ -53,3 +54,16 @@ export async function deleteImage(url: string | string[]): Promise<void> {
     console.error('[Error] deleteImage:', error);
   }
 }
+
+export const extractBlobUrls = (messages: ModelMessage[]): string[] => {
+  const urls: string[] = [];
+  for (const message of messages) {
+    if (!Array.isArray(message.content)) continue;
+    for (const part of message.content) {
+      if (part.type === 'image' && typeof part.image === 'string' && part.image.includes('.blob.vercel-storage.com/')) {
+        urls.push(part.image);
+      }
+    }
+  }
+  return urls;
+};

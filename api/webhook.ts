@@ -2,6 +2,7 @@ import { CONFIG } from "../utils/config";
 import { getMessages, setMessages, clearMessages } from "../lib/neon";
 import { getContent, replyText } from "../lib/line";
 import { createChat } from "../lib/ai";
+import { uploadImage, deleteImage, extractBlobUrls } from "../lib/blob";
 import { ModelMessage } from 'ai';
 
 const validateSignature = async (
@@ -56,11 +57,12 @@ const handleLineMessage = async (event: any) => {
     const userMessages = await getMessages(userId);
     const messages = [...userMessages] as ModelMessage[];
 
+    let imageUrl: string | null = null;
     if (type === "image") {
       const buffer = await getData(event.message);
       if (!buffer) throw new Error("Failed to get image content");
-      messages.length = 0;
-      messages.push({ role: "user", content: [{ type: 'image', image: buffer }] });
+      imageUrl = await uploadImage(`line/${userId}/${event.message.id}.jpg`, buffer);
+      messages.push({ role: "user", content: [{ type: 'image', image: imageUrl ?? buffer }] });
     } else {
       messages.push({ role: "user", content: text });
     }
@@ -69,18 +71,21 @@ const handleLineMessage = async (event: any) => {
     const { message } = await createChat(messages, {
       enableTools: type !== "image",
       toolExecutors: {
-        clear: () => clearMessages(userId).then(() => {
-          skipSetMessages = true;
-          return true;
-        }).catch(() => false),
+        clear: () => deleteImage(extractBlobUrls(userMessages))
+          .then(() => clearMessages(userId))
+          .then(() => {
+            skipSetMessages = true;
+            return true;
+          }).catch(() => false),
       }
     });
     await replyText(message, replyToken);
 
     if (!skipSetMessages) {
       if (type === "image") {
-        // 將圖片訊息替換成文字訊息，不儲存圖片內容，直接存放在 FireStore 會超過限制
-        userMessages.push({ role: "user", content: "[User sent an image]" });
+        userMessages.push(imageUrl
+          ? { role: "user", content: [{ type: 'image', image: imageUrl }] }
+          : { role: "user", content: "[User sent an image]" });
       } else {
         userMessages.push({ role: "user", content: text });
       }
