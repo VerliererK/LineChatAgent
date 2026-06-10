@@ -5,7 +5,8 @@
 
 ## 主要特色
 
-- **Line Webhook**：透過 Line Webhook 接收用戶訊息並使用 AI 進行回應，支援文字與圖片訊息（圖片不儲存在資料庫）
+- **Line Webhook**：透過 Line Webhook 接收用戶訊息並使用 AI 進行回應，支援文字與圖片訊息
+- **Vercel Blob**：(可選) 圖片訊息會自動縮圖後上傳至 Vercel Blob，並以網址存入對話紀錄，讓 AI 在後續對話中仍能看見圖片；清除對話時一併刪除圖片。未設定時圖片僅供當次回應使用，不會儲存
 - **Web UI**：提供網頁聊天介面，支援串流回應、圖片上傳與 LLM 模型設定面板
 - **Vercel Functions**：啟用 Fluid compute 能有 300 秒的運行時間，能產生更多的回應內容（Line 不支援 Streaming 回應，所以要等待全部內容產生完畢才能回應）
 - **Vercel AI SDK**：支援 Vercel AI Gateway（預設）、OpenAI、Google Gemini
@@ -28,7 +29,11 @@
    在 Vercel 專案的儀表板中，前往 **Storage** 分頁，點擊 **Create DataBase**。
    選擇 **Neon** 建立資料庫。Vercel 會自動為您建立一個 Neon 專案，並將相關環境變數設定到專案中。
 
-3. **設定環境變數**  
+3. **設定 Vercel Blob**（可選，啟用對話圖片儲存）
+   同樣在 **Storage** 分頁，點擊 **Create Database** 並選擇 **Blob** 建立 store。
+   Vercel 會自動將相關環境變數設定到專案中，無需手動設定。
+
+4. **設定環境變數**  
    請於 Vercel 專案設定或本地 `.env` 檔案中設置下列變數：
 
    | 變數名稱 | 取得方式 |
@@ -41,13 +46,13 @@
    | `GOOGLE_MAP_API_KEY` | (可選) [Google Cloud Console](https://console.cloud.google.com/) 啟用 Places API 和 Weather API 並取得 |
    | `TAVILY_API_KEY` | (可選) [Tavily AI](https://tavily.com/) 註冊取得 |
 
-4. **設定 Line Webhook URL**  
+5. **設定 Line Webhook URL**  
    部署到 Vercel 後，請將 Line Bot 的 Webhook URL 設為：  
    ```
    https://<你的 Vercel 網域>/api/webhook
    ```
 
-5. **更改設定**
+6. **更改設定**
    部署完成後，請開啟您的 Vercel 網域的根目錄 (`https://<你的 Vercel 網域>`)。
    您會看到一個網頁介面，請在此頁面輸入您在環境變數中設定的 `AUTH_KEY` 進行登入。
    登入後，點擊右上角的齒輪圖示「⚙️」，即可開啟設定，在此處填寫並儲存您要使用的語言模型（LLM）相關設定。
