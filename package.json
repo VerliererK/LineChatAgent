@@ -3,7 +3,9 @@
     "@ai-sdk/google": "^3.0.80",
     "@ai-sdk/openai": "^3.0.67",
     "@neondatabase/serverless": "^1.0.2",
-    "ai": "^6.0.193"
+    "@vercel/blob": "^2.4.0",
+    "ai": "^6.0.193",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@types/node": "^24.13.1",
