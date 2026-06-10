@@ -167,8 +167,8 @@ function SettingsPanel({ authKey, onClose }: { authKey: string; onClose: () => v
   const canSave = settings.provider.trim() !== "" && settings.model.trim() !== "";
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="settings-panel">
         <div className="settings-header">
           <h2>模型設定</h2>
           <button className="settings-close-btn" onClick={onClose}>&times;</button>
@@ -177,49 +177,61 @@ function SettingsPanel({ authKey, onClose }: { authKey: string; onClose: () => v
           <div className="settings-body"><p>載入中...</p></div>
         ) : (
           <div className="settings-body">
-            <div className="settings-field">
-              <label className="required">Provider</label>
-              <select value={settings.provider} onChange={(e) => update("provider", e.target.value)}>
-                <option value="vercel">Vercel</option>
-                <option value="google">Google</option>
-                <option value="openai">OpenAI</option>
-              </select>
-            </div>
-            <div className="settings-field">
-              <label className="required">Model</label>
-              <input value={settings.model} onChange={(e) => update("model", e.target.value)} placeholder="e.g., openai/gpt-5" />
-            </div>
-            <div className="settings-field">
-              <label>API Key</label>
-              <input type="password" value={settings.api_key} onChange={(e) => update("api_key", e.target.value)} placeholder="Enter your API key" />
-            </div>
-            <div className="settings-field">
-              <label>Base URL (Optional)</label>
-              <input value={settings.base_url} onChange={(e) => update("base_url", e.target.value)} placeholder="e.g., https://api.example.com/v1" />
-            </div>
-            <div className="settings-field">
-              <label>System Role</label>
-              <textarea rows={4} value={settings.system_role} onChange={(e) => update("system_role", e.target.value)} placeholder="Define the assistant's behavior..." />
-            </div>
-            <div className="settings-field-inline">
+            <div className="settings-group">
               <div className="settings-field">
-                <label>Max Tokens</label>
-                <input type="number" min="1" value={settings.max_tokens} onChange={(e) => update("max_tokens", e.target.value)} placeholder="4096" />
+                <label className="required">Provider</label>
+                <select value={settings.provider} onChange={(e) => update("provider", e.target.value)}>
+                  <option value="vercel">Vercel</option>
+                  <option value="google">Google</option>
+                  <option value="openai">OpenAI</option>
+                </select>
               </div>
               <div className="settings-field">
-                <label>Temperature</label>
-                <input type="number" step="0.1" min="0" max="2" value={settings.temperature} onChange={(e) => update("temperature", e.target.value)} placeholder="e.g., 0.7" />
+                <label className="required">Model</label>
+                <input value={settings.model} onChange={(e) => update("model", e.target.value)} placeholder="e.g., openai/gpt-5" />
+              </div>
+              <div className="settings-field">
+                <label>API Key</label>
+                <input type="password" value={settings.api_key} onChange={(e) => update("api_key", e.target.value)} placeholder="Enter your API key" />
+              </div>
+              <div className="settings-field">
+                <label>Base URL (Optional)</label>
+                <input value={settings.base_url} onChange={(e) => update("base_url", e.target.value)} placeholder="e.g., https://api.example.com/v1" />
               </div>
             </div>
-            <div className="settings-field">
-              <label>Timeout (seconds)</label>
-              <input type="number" min="1" value={settings.timeout} onChange={(e) => update("timeout", e.target.value)} placeholder="290" />
+            <div className="settings-group">
+              <div className="settings-field">
+                <label>System Role</label>
+                <textarea rows={4} value={settings.system_role} onChange={(e) => update("system_role", e.target.value)} placeholder="Define the assistant's behavior..." />
+              </div>
             </div>
-            <div className="settings-field">
-              <label>StopWhen</label>
-              <input type="number" min="1" max="20" value={settings.stop_when} onChange={(e) => update("stop_when", e.target.value)} placeholder="10" />
+            <div className="settings-group">
+              <div className="settings-field-grid">
+                <div className="settings-field">
+                  <label>Max Tokens</label>
+                  <input type="number" min="1" value={settings.max_tokens} onChange={(e) => update("max_tokens", e.target.value)} placeholder="4096" />
+                </div>
+                <div className="settings-field">
+                  <label>Temperature</label>
+                  <input type="number" step="0.1" min="0" max="2" value={settings.temperature} onChange={(e) => update("temperature", e.target.value)} placeholder="e.g., 0.7" />
+                </div>
+                <div className="settings-field">
+                  <label>Timeout (seconds)</label>
+                  <input type="number" min="1" value={settings.timeout} onChange={(e) => update("timeout", e.target.value)} placeholder="290" />
+                </div>
+                <div className="settings-field">
+                  <label>StopWhen</label>
+                  <input type="number" min="1" max="20" value={settings.stop_when} onChange={(e) => update("stop_when", e.target.value)} placeholder="10" />
+                </div>
+              </div>
             </div>
-            {message && <p className={message.type === "success" ? "success" : "error"}>{message.text}</p>}
+          </div>
+        )}
+        {!loading && (
+          <div className="settings-footer">
+            {message && (
+              <p className={`settings-message ${message.type}`}>{message.text}</p>
+            )}
             <div className="settings-actions">
               <button type="button" className="settings-cancel-btn" onClick={onClose}>取消</button>
               <button className="settings-save-btn" onClick={save} disabled={!canSave || saving}>
@@ -233,6 +245,9 @@ function SettingsPanel({ authKey, onClose }: { authKey: string; onClose: () => v
   );
 }
 
+const isTouchDevice =
+  typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+
 function Chat({ authKey }: { authKey: string }) {
   const transportRef = useRef(
     new DefaultChatTransport({
@@ -241,7 +256,7 @@ function Chat({ authKey }: { authKey: string }) {
     })
   );
 
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, status, error, regenerate } = useChat({
     transport: transportRef.current,
   });
 
@@ -252,6 +267,12 @@ function Chat({ authKey }: { authKey: string }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isLoading = status === "streaming" || status === "submitted";
+  const lastMessage = messages.at(-1);
+  const hasVisibleReply =
+    lastMessage?.role === "assistant" &&
+    lastMessage.parts.some(
+      (p) => (p.type === "text" && p.text) || p.type === "file"
+    );
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -282,7 +303,8 @@ function Chat({ authKey }: { authKey: string }) {
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (isTouchDevice) return;
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       send();
     }
@@ -303,25 +325,36 @@ function Chat({ authKey }: { authKey: string }) {
       {showSettings && <SettingsPanel authKey={authKey} onClose={() => setShowSettings(false)} />}
 
       <div className="message-area">
-        {messages.map((m) => (
-          <div key={m.id} className={`bubble ${m.role}`}>
-            {m.parts
-              .filter((p) => p.type === "text" || p.type === "file")
-              .map((p, i) =>
+        {messages.map((m) => {
+          const parts = m.parts.filter(
+            (p) => (p.type === "text" && p.text) || p.type === "file"
+          );
+          if (parts.length === 0) return null;
+          return (
+            <div key={m.id} className={`bubble ${m.role}`}>
+              {parts.map((p, i) =>
                 p.type === "file" ? (
                   <img key={i} src={p.url} alt="uploaded" />
                 ) : (
-                  <span key={i}>{p.text}</span>
+                  <span key={i}>{p.type === "text" ? p.text : null}</span>
                 )
               )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
 
-        {isLoading && messages.at(-1)?.role !== "assistant" && (
+        {isLoading && !hasVisibleReply && (
           <div className="bubble assistant">
             <div className="typing-dots">
               <span /><span /><span />
             </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="chat-error">
+            <span>發生錯誤:{error.message || "請求失敗"}</span>
+            <button type="button" onClick={() => regenerate()}>重試</button>
           </div>
         )}
 
