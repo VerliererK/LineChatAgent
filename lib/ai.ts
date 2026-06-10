@@ -167,9 +167,9 @@ const createTools = (toolExecutors: ToolExecutors = {}) => {
         // topic: z.enum(['general', 'news']).optional().default('general').describe('The topic of the search. Default is general. If you want to search for news, use "news".'),
         days: z.number().optional().default(3).describe("The number of days back from the current date to include in the search results. This specifies the time frame of data to be retrieved. Please note that this feature is only available when using the 'news' search topic"),
         time_range: z.enum(['day', 'week', 'month', 'year']).optional().default('day').describe('The time range of the search. Default is day.'),
-        maxResults: z.number().optional().default(5).describe('The maximum number of results to return. Default is 5.'),
+        max_results: z.number().optional().default(5).describe('The maximum number of results to return. Default is 5.'),
       }),
-      execute: async ({ query, time_range, maxResults }, { abortSignal }) => {
+      execute: async ({ query, time_range, max_results }, { abortSignal }) => {
         const result = await fetch("https://api.tavily.com/search", {
           signal: abortSignal,
           method: "POST",
@@ -177,7 +177,7 @@ const createTools = (toolExecutors: ToolExecutors = {}) => {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${CONFIG.TAVILY_API_KEY}`,
           },
-          body: JSON.stringify({ query, time_range, maxResults }),
+          body: JSON.stringify({ query, time_range, max_results }),
         })
           .then(res => res.json())
           .then(data => data.results)
