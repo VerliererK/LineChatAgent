@@ -249,6 +249,9 @@ export const createChat = async (messages: ModelMessage[], options: ChatOptions 
 
   const result = streamText({
     ...config,
+    onError: ({ error }: { error: unknown }) => {
+      console.error('[Error] streamText:', error);
+    },
     onAbort: ({ steps }) => {
       aborted = true;
       partialSteps = steps;
@@ -285,7 +288,7 @@ export const createChat = async (messages: ModelMessage[], options: ChatOptions 
   console.log(`[Info] token: ${totalTokens}, finish_reason: ${finishReason}, tool_usage: ${toolUsage}, elapsed: ${elapsed}ms`);
 
   if (!message) {
-    message = `AI 發生錯誤，無法回答您的問題。 finish_reason: ${finishReason}`;
+    message = `AI 發生錯誤，無法回答您的問題。`;
   }
   return { message, finishReason };
 }
