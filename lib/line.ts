@@ -27,3 +27,14 @@ export const reply = (messages: { type: string; text: string }[], replyToken: st
 export const replyText = (text: string, replyToken: string) => {
   return reply([{ type: "text", text: text }], replyToken);
 };
+
+export const showLoading = (chatId: string, loadingSeconds = 60) => {
+  return fetchTimeout("https://api.line.me/v2/bot/chat/loading/start", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${CONFIG.LINE_CHANNEL_ACCESS_TOKEN}`,
+    },
+    body: JSON.stringify({ chatId, loadingSeconds }),
+  }, 3000);
+};

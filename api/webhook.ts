@@ -1,6 +1,6 @@
 import { CONFIG } from "../utils/config";
 import { getMessages, setMessages, clearMessages } from "../lib/neon";
-import { getContent, replyText } from "../lib/line";
+import { getContent, replyText, showLoading } from "../lib/line";
 import { createChat } from "../lib/ai";
 import { uploadImage, deleteImage, extractBlobUrls } from "../lib/blob";
 import { ModelMessage } from 'ai';
@@ -54,6 +54,8 @@ const handleLineMessage = async (event: any) => {
   }
 
   try {
+    showLoading(userId);
+
     const userMessages = await getMessages(userId);
     const messages = [...userMessages] as ModelMessage[];
 
