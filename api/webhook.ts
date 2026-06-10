@@ -87,7 +87,7 @@ const handleLineMessage = async (event: any) => {
       userMessages.push({ role: "assistant", content: message });
       await setMessages(userId, userMessages);
     }
-  } catch (error) {
+  } catch (error: any) {
     const status = error.code || error.status || 500;
     const message = error.message || "Internal Server Error";
     console.error(error);

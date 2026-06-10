@@ -6,6 +6,7 @@
     "ai": "^6.0.193"
   },
   "devDependencies": {
-    "@types/node": "^25.2.3"
+    "@types/node": "^24.13.1",
+    "typescript": "^6.0.3"
   }
 }

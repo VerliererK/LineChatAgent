@@ -12,7 +12,7 @@ export async function POST(req: Request): Promise<Response> {
   try {
     const { message } = await createChat(messages);
     return new Response(message);
-  } catch (error) {
+  } catch (error: any) {
     const status = error.code || error.status || 500;
     const message = error.message || "Internal Server Error";
     return new Response(message, { status });
