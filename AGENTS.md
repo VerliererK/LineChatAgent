@@ -9,8 +9,8 @@ LINE chatbot deployed on Vercel Functions, powered by AI SDK v6 with tool callin
 ## Development Commands
 
 ```bash
-# Type checking — backend (must use --skipLibCheck due to third-party type issues)
-npx -p typescript tsc --noEmit --skipLibCheck
+# Type checking — backend
+npx tsc --noEmit
 
 # Type checking — frontend
 cd web && npx tsc -b --noEmit
