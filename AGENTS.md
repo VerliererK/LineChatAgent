@@ -34,6 +34,8 @@ cd web && npm run dev
 
 LINE message → `api/webhook.ts` (signature validation) → `lib/neon.ts` (load user history) → `lib/ai.ts::createChat()` (stream AI response with tools) → `lib/line.ts` (reply to user) → `lib/neon.ts` (persist messages)
 
+Image messages: the image is downloaded from LINE, downscaled and uploaded to Vercel Blob via `lib/blob.ts`, and persisted in history as an image-part URL (`{ type: 'image', image: <blob url> }`) so the model can see past images. When Blob is not configured or the upload fails, the original buffer is sent to the model for the current turn only and history stores a `"[User sent an image]"` placeholder.
+
 ### API Routes (`api/`)
 
 Vercel Functions auto-discovered from `/api`. Each file exports named HTTP methods (`GET`, `POST`).
@@ -47,6 +49,7 @@ Vercel Functions auto-discovered from `/api`. Each file exports named HTTP metho
 
 - **ai.ts** — Central module. `createModel()` instantiates provider-specific models (Vercel/OpenAI/Google). `createTools()` conditionally registers tools based on available API keys. Both are exported for use by `api/chat.ts` and `api/webhook.ts`. `createChat()` orchestrates streaming with AI SDK v6's built-in `timeout` and `onAbort`, propagating `abortSignal` to all tool fetch calls.
 - **neon.ts** — Database queries for `users` (conversation history as JSONB) and `settings` tables.
+- **blob.ts** — Vercel Blob image storage. `uploadImage()` downscales images with sharp (max 1280px long edge, JPEG) before upload; `deleteImage()` removes blobs; `extractBlobUrls()` collects blob URLs from history for cleanup when the `clear` tool runs. Enabled when `BLOB_READ_WRITE_TOKEN` or `BLOB_STORE_ID` (OIDC) is set; all functions degrade gracefully when disabled.
 - **line.ts** — LINE Messaging API helpers (reply, push, get image content).
 - **auth.ts** — Bearer token validation against `CONFIG.AUTH_KEY`.
 - **DEFAULT_SYSTEM_ROLE.ts** — System prompt enforcing no-Markdown output (LINE limitation), Taiwan timezone, and tool-first behavior.
@@ -55,7 +58,7 @@ Vercel Functions auto-discovered from `/api`. Each file exports named HTTP metho
 
 ### Configuration (`utils/config.ts`)
 
-Environment variables loaded at runtime. `GOOGLE_MAP_API_KEY` and `TAVILY_API_KEY` are optional and control which tools are available. `ENCRYPTION_KEY` (optional, 32-byte hex) enables AES-256-GCM encryption for `api_key` in the database.
+Environment variables loaded at runtime. `GOOGLE_MAP_API_KEY` and `TAVILY_API_KEY` are optional and control which tools are available. `ENCRYPTION_KEY` (optional, 32-byte hex) enables AES-256-GCM encryption for `api_key` in the database. `BLOB_READ_WRITE_TOKEN` or `BLOB_STORE_ID` (optional, read directly from `process.env` in `lib/blob.ts`) enables storing chat images in Vercel Blob.
 
 ### Database Schema (`database-schema.sql`)
 

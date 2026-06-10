@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import type { ModelMessage } from 'ai';
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -6,15 +7,15 @@ export const deleteUser = async (id: string) => {
   await sql`DELETE FROM users WHERE id = ${id}`;
 };
 
-export const getMessages = async (id: string) => {
+export const getMessages = async (id: string): Promise<ModelMessage[]> => {
   const result = await sql`SELECT messages FROM users WHERE id = ${id}`;
   if (result.length === 0) {
-    return [] as { role: string; content: string; }[];
+    return [];
   }
-  return result[0].messages || [] as { role: string; content: string; }[];
+  return result[0].messages || [];
 };
 
-export const setMessages = async (id: string, messages: { role: string; content: string }[]) => {
+export const setMessages = async (id: string, messages: ModelMessage[]) => {
   if (!Array.isArray(messages)) return;
   await sql`
     INSERT INTO users (id, messages)
