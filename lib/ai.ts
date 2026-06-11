@@ -2,7 +2,7 @@ import DEFAULT_SYSTEM_ROLE from "./DEFAULT_SYSTEM_ROLE";
 import { CONFIG } from "../utils/config";
 import { getLLMSettings } from "../lib/settings";
 import { z } from 'zod';
-import { tool, stepCountIs, streamText, LanguageModel, ModelMessage } from 'ai';
+import { tool, stepCountIs, streamText, LanguageModel, ModelMessage, APICallError } from 'ai';
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createOpenAI } from "@ai-sdk/openai";
 
@@ -240,16 +240,28 @@ export const createChatConfig = async (messages: ModelMessage[], options: ChatOp
   };
 }
 
-export const createChat = async (messages: ModelMessage[], options: ChatOptions = {}) => {
-  const config = await createChatConfig(messages, options);
+// 失敗時回給使用者的訊息，附上截斷後的錯誤摘要方便除錯
+// 注意：不要使用 APICallError 的 url 欄位（可能含 API key）
+const errorReply = (error: unknown, fallback = "") => {
+  let detail = error instanceof Error ? error.message : error ? String(error) : fallback;
+  if (APICallError.isInstance(error)) {
+    detail = `HTTP ${error.statusCode ?? "?"}: ${error.responseBody ?? error.message}`;
+  }
+  return `AI 發生錯誤，請點「重試」再試一次。${detail ? `\n(${detail.slice(0, 200)})` : ""}`;
+};
 
+export const createChat = async (messages: ModelMessage[], options: ChatOptions = {}) => {
   const startTime = Date.now();
   let aborted = false;
   let partialSteps: any[] = [];
+  let streamError: unknown;
+
+  const config = await createChatConfig(messages, options);
 
   const result = streamText({
     ...config,
     onError: ({ error }: { error: unknown }) => {
+      streamError = error;
       console.error('[Error] streamText:', error);
     },
     onAbort: ({ steps }) => {
@@ -264,7 +276,7 @@ export const createChat = async (messages: ModelMessage[], options: ChatOptions 
       message += textPart;
     }
   } catch (e) {
-    if (!aborted) throw e;
+    if (!aborted) streamError ??= e;
   }
 
   if (aborted) {
@@ -274,8 +286,12 @@ export const createChat = async (messages: ModelMessage[], options: ChatOptions 
     if (message)
       message += "...";
     else
-      message = "抱歉，處理您的請求時間過長，請稍後再試一次。";
-    return { message, finishReason: 'timeout' };
+      message = "抱歉，AI 處理逾時，請點「重試」再試一次。";
+    return { message, finishReason: 'timeout', failed: true };
+  }
+
+  if (streamError) {
+    return { message: errorReply(streamError), finishReason: 'error', failed: true };
   }
 
   const steps = await result.steps;
@@ -288,7 +304,8 @@ export const createChat = async (messages: ModelMessage[], options: ChatOptions 
   console.log(`[Info] token: ${totalTokens}, finish_reason: ${finishReason}, tool_usage: ${toolUsage}, elapsed: ${elapsed}ms`);
 
   if (!message) {
-    message = `AI 發生錯誤，無法回答您的問題。`;
+    console.error(`[Error] empty response, finish_reason: ${finishReason}`);
+    return { message: errorReply(undefined, `finish_reason: ${finishReason}`), finishReason, failed: true };
   }
-  return { message, finishReason };
+  return { message, finishReason, failed: false };
 }

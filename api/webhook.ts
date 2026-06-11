@@ -1,9 +1,11 @@
 import { CONFIG } from "../utils/config";
 import { getMessages, setMessages, clearMessages } from "../lib/neon";
-import { getContent, replyText, showLoading } from "../lib/line";
+import { getContent, replyText, quickReply, showLoading } from "../lib/line";
 import { createChat } from "../lib/ai";
 import { uploadImage, deleteImagesByPrefix } from "../lib/blob";
 import { ModelMessage } from 'ai';
+
+const RETRY_QUICK_REPLY = { label: "重試", data: "action=retry" };
 
 const validateSignature = async (
   xLineSignature: string | null,
@@ -40,59 +42,86 @@ const getData = async (message: any) => {
   return buffer;
 }
 
-const handleLineMessage = async (event: any) => {
-  const { replyToken, type: eventType } = event;
-  const { type, text } = event.message;
+const handleLineMessage = async (event: any, retry: boolean = false) => {
+  const { replyToken } = event;
+  const { type, text } = event.message || {};
   const userId = event.source.userId;
 
-  if (eventType !== "message") return;
-
   // type: text, image, video, audio, file, location, sticker,
-  if (type !== "text" && type !== "image") {
+  if (!retry && type !== "text" && type !== "image") {
     await replyText("Not support this message type", replyToken);
     return;
   }
 
-  try {
-    showLoading(userId);
+  showLoading(userId);
 
-    const userMessages = await getMessages(userId);
-    const messages = [...userMessages] as ModelMessage[];
+  const userMessages = await getMessages(userId);
+  const messages = [...userMessages] as ModelMessage[];
 
-    let imageUrl: string | null = null;
-    if (type === "image") {
-      const buffer = await getData(event.message);
-      if (!buffer) throw new Error("Failed to get image content");
-      imageUrl = await uploadImage(`line/${userId}/${event.message.id}.jpg`, buffer);
-      messages.push({ role: "user", content: [{ type: 'image', image: imageUrl ?? buffer }] });
-    } else {
-      messages.push({ role: "user", content: text });
+  // retry 時不重複加入 user 訊息，直接用歷史訊息帶模型跑一次
+  let imageUrl: string | null = null;
+  if (type === "image") {
+    const buffer = await getData(event.message);
+    if (!buffer) throw new Error("Failed to get image content");
+    imageUrl = await uploadImage(`line/${userId}/${event.message.id}.jpg`, buffer);
+    messages.push({ role: "user", content: [{ type: 'image', image: imageUrl ?? buffer }] });
+  } else if (type === "text" && text) {
+    messages.push({ role: "user", content: text });
+  }
+
+  const lastMessage = messages[messages.length - 1];
+  const enableTools = !(Array.isArray(lastMessage?.content) && lastMessage.content.some((part) => part.type === "image"));
+
+  let cleared = false;
+  const { message, failed } = await createChat(messages, {
+    enableTools,
+    toolExecutors: {
+      // 注意：工具執行當下對話還在 tool loop 中，後續 step 會把含圖片 URL 的歷史
+      // 再送回 provider，這時刪 blob 會讓 provider 下載圖片失敗 (HTTP 400)。
+      // 所以這裡只清 DB，blob 延後到對話結束、回覆送出後才刪。
+      clear: () => clearMessages(userId)
+        .then(() => {
+          cleared = true;
+          return true;
+        }).catch(() => false),
     }
-
-    let skipSetMessages = false;
-    const { message } = await createChat(messages, {
-      enableTools: type !== "image",
-      toolExecutors: {
-        clear: () => deleteImagesByPrefix(`line/${userId}/`)
-          .then(() => clearMessages(userId))
-          .then(() => {
-            skipSetMessages = true;
-            return true;
-          }).catch(() => false),
-      }
-    });
+  });
+  if (failed) {
+    await quickReply(message, replyToken, [RETRY_QUICK_REPLY]);
+  } else {
     await replyText(message, replyToken);
+  }
 
-    if (!skipSetMessages) {
-      if (type === "image") {
-        userMessages.push(imageUrl
-          ? { role: "user", content: [{ type: 'image', image: imageUrl }] }
-          : { role: "user", content: "[User sent an image]" });
-      } else {
-        userMessages.push({ role: "user", content: text });
-      }
-      userMessages.push({ role: "assistant", content: message });
-      await setMessages(userId, userMessages);
+  if (cleared) {
+    await deleteImagesByPrefix(`line/${userId}/`);
+    return;
+  }
+
+  if (type === "image") {
+    userMessages.push(imageUrl
+      ? { role: "user", content: [{ type: 'image', image: imageUrl }] }
+      : { role: "user", content: "[User sent an image]" });
+  } else if (type === "text" && text) {
+    userMessages.push({ role: "user", content: text });
+  }
+  if (!failed) {
+    userMessages.push({ role: "assistant", content: message });
+  }
+  await setMessages(userId, userMessages);
+};
+
+const handleLineEvent = async (event: any) => {
+  const { replyToken, type } = event;
+
+  try {
+    if (type === "message") {
+      await handleLineMessage(event);
+    }
+    else if (type === "postback" && event.postback?.data === RETRY_QUICK_REPLY.data) {
+      await handleLineMessage(event, true);
+    }
+    else {
+      console.error(`Unsupported event type: ${type}`);
     }
   } catch (error: any) {
     const status = error.code || error.status || 500;
@@ -118,7 +147,7 @@ export async function POST(request: Request): Promise<Response> {
 
     // 處理每個事件
     for (const event of events) {
-      await handleLineMessage(event);
+      await handleLineEvent(event);
     }
 
     return new Response('OK', { status: 200 });
