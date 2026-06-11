@@ -49,7 +49,7 @@ Vercel Functions auto-discovered from `/api`. Each file exports named HTTP metho
 
 - **ai.ts** — Central module. `createModel()` instantiates provider-specific models (Vercel/OpenAI/Google). `createTools()` conditionally registers tools based on available API keys. Both are exported for use by `api/chat.ts` and `api/webhook.ts`. `createChat()` orchestrates streaming with AI SDK v6's built-in `timeout` and `onAbort`, propagating `abortSignal` to all tool fetch calls.
 - **neon.ts** — Database queries for `users` (conversation history as JSONB) and `settings` tables.
-- **blob.ts** — Vercel Blob image storage. `uploadImage()` downscales images with sharp (max 1280px long edge, JPEG) before upload; `deleteImage()` removes blobs; `extractBlobUrls()` collects blob URLs from history for cleanup when the `clear` tool runs. Enabled when `BLOB_READ_WRITE_TOKEN` or `BLOB_STORE_ID` (OIDC) is set; all functions degrade gracefully when disabled.
+- **blob.ts** — Vercel Blob image storage. `uploadImage()` downscales images with sharp (max 1280px long edge, JPEG) before upload; `deleteImage()` removes blobs; `deleteImagesByPrefix()` deletes all blobs under a path prefix (e.g. `line/${userId}/`), used by the `clear` tool to wipe a user's images without scanning history. Enabled when `BLOB_READ_WRITE_TOKEN` or `BLOB_STORE_ID` (OIDC) is set; all functions degrade gracefully when disabled.
 - **line.ts** — LINE Messaging API helpers (reply, push, get image content).
 - **auth.ts** — Bearer token validation against `CONFIG.AUTH_KEY`.
 - **DEFAULT_SYSTEM_ROLE.ts** — System prompt enforcing no-Markdown output (LINE limitation), Taiwan timezone, and tool-first behavior.

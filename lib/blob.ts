@@ -1,6 +1,5 @@
-import { put, del } from '@vercel/blob';
+import { put, del, list } from '@vercel/blob';
 import sharp from 'sharp';
-import type { ModelMessage } from 'ai';
 
 const MAX_DIMENSION = 1280;
 const JPEG_QUALITY = 85;
@@ -55,15 +54,19 @@ export async function deleteImage(url: string | string[]): Promise<void> {
   }
 }
 
-export const extractBlobUrls = (messages: ModelMessage[]): string[] => {
-  const urls: string[] = [];
-  for (const message of messages) {
-    if (!Array.isArray(message.content)) continue;
-    for (const part of message.content) {
-      if (part.type === 'image' && typeof part.image === 'string' && part.image.includes('.blob.vercel-storage.com/')) {
-        urls.push(part.image);
+// 刪除指定路徑前綴下的所有 blob（如 `line/${userId}/`），不需要掃對話紀錄找 URL
+export async function deleteImagesByPrefix(prefix: string): Promise<void> {
+  if (!isBlobEnabled() || !prefix) return;
+  try {
+    let cursor: string | undefined;
+    do {
+      const result = await list({ prefix, cursor });
+      if (result.blobs.length > 0) {
+        await del(result.blobs.map((blob) => blob.url));
       }
-    }
+      cursor = result.hasMore ? result.cursor : undefined;
+    } while (cursor);
+  } catch (error) {
+    console.error('[Error] deleteImagesByPrefix:', error);
   }
-  return urls;
-};
+}

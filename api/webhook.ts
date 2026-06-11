@@ -2,7 +2,7 @@ import { CONFIG } from "../utils/config";
 import { getMessages, setMessages, clearMessages } from "../lib/neon";
 import { getContent, replyText, showLoading } from "../lib/line";
 import { createChat } from "../lib/ai";
-import { uploadImage, deleteImage, extractBlobUrls } from "../lib/blob";
+import { uploadImage, deleteImagesByPrefix } from "../lib/blob";
 import { ModelMessage } from 'ai';
 
 const validateSignature = async (
@@ -73,7 +73,7 @@ const handleLineMessage = async (event: any) => {
     const { message } = await createChat(messages, {
       enableTools: type !== "image",
       toolExecutors: {
-        clear: () => deleteImage(extractBlobUrls(userMessages))
+        clear: () => deleteImagesByPrefix(`line/${userId}/`)
           .then(() => clearMessages(userId))
           .then(() => {
             skipSetMessages = true;
