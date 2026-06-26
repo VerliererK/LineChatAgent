@@ -25,6 +25,16 @@ export const setMessages = async (id: string, messages: ModelMessage[]) => {
   `;
 };
 
+export const appendMessages = async (id: string, messages: ModelMessage[]) => {
+  if (!Array.isArray(messages) || messages.length === 0) return;
+  await sql`
+    INSERT INTO users (id, messages)
+    VALUES (${id}, ${JSON.stringify(messages)}::jsonb)
+    ON CONFLICT (id) DO UPDATE SET
+    messages = COALESCE(users.messages, '[]'::jsonb) || EXCLUDED.messages
+  `;
+};
+
 export const clearMessages = async (id: string) => {
   await setMessages(id, []);
 };

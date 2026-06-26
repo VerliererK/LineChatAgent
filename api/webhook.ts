@@ -1,5 +1,5 @@
 import { CONFIG } from "../utils/config";
-import { getMessages, setMessages, clearMessages } from "../lib/neon";
+import { appendMessages, getMessages, clearMessages } from "../lib/neon";
 import { getContent, replyText, quickReply, showLoading } from "../lib/line";
 import { createChat } from "../lib/ai";
 import { uploadImage, deleteImagesByPrefix } from "../lib/blob";
@@ -55,8 +55,7 @@ const handleLineMessage = async (event: any, retry: boolean = false) => {
 
   showLoading(userId);
 
-  const userMessages = await getMessages(userId);
-  const messages = [...userMessages] as ModelMessage[];
+  const messages = await getMessages(userId);
 
   // retry 時不重複加入 user 訊息，直接用歷史訊息帶模型跑一次
   let imageUrl: string | null = null;
@@ -97,17 +96,18 @@ const handleLineMessage = async (event: any, retry: boolean = false) => {
     return;
   }
 
+  const newMessages: ModelMessage[] = [];
   if (type === "image") {
-    userMessages.push(imageUrl
+    newMessages.push(imageUrl
       ? { role: "user", content: [{ type: 'image', image: imageUrl }] }
       : { role: "user", content: "[User sent an image]" });
   } else if (type === "text" && text) {
-    userMessages.push({ role: "user", content: text });
+    newMessages.push({ role: "user", content: text });
   }
   if (!failed) {
-    userMessages.push({ role: "assistant", content: message });
+    newMessages.push({ role: "assistant", content: message });
   }
-  await setMessages(userId, userMessages);
+  await appendMessages(userId, newMessages);
 };
 
 const handleLineEvent = async (event: any) => {
